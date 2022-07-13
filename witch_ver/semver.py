@@ -15,6 +15,7 @@ REGEX = re.compile(fr"^(?P<major>{_NUM_ID})\."
                    fr"(?P<patch>{_NUM_ID})"
                    fr"(?:-(?P<prerelease>{_PRE_ID}(?:\.{_PRE_ID})*))?"
                    fr"(?:\+(?P<build>{_BUILD_ID}(?:\.{_BUILD_ID})*))?$")
+REGEX_NUM_ID = re.compile(fr"^{_NUM_ID}$")
 REGEX_PRE_ID = re.compile(fr"^{_PRE_ID}$")
 REGEX_BUILD_ID = re.compile(fr"^{_BUILD_ID}$")
 
@@ -85,3 +86,94 @@ class SemVer:
           if REGEX_PRE_ID.match(i) is None:
             raise ValueError(f"Build tag does not match SemVer pattern '{i}'")
           self._build.append(i)
+
+  def __str__(self) -> str:
+    buf = f"{self._major}.{self._minor}.{self._patch}"
+    if len(self._prerelease) > 0:
+      buf += "-"
+      buf += ".".join(self._prerelease)
+    if len(self._build) > 0:
+      buf += "+"
+      buf += ".".join(self._build)
+    return buf
+
+  def __repr__(self) -> str:
+    return f"<witch_ver.semver.SemVer '{self}'>"
+
+  def __eq__(self, obj: object) -> bool:
+    """Compare SemVer for equality
+
+    Tests strictly that all parts match.
+
+    Args:
+      obj: Of type SemVer or a string
+
+    Returns:
+      True if all parts are equal, False otherwise
+    """
+    if isinstance(obj, str):
+      obj = SemVer(obj)
+    elif not isinstance(obj, SemVer):
+      raise TypeError(f"Cannot compare SemVer to {type(obj)}")
+
+    if self._major != obj._major:
+      return False
+    if self._minor != obj._minor:
+      return False
+    if self._patch != obj._patch:
+      return False
+    if self._prerelease != obj._prerelease:
+      return False
+    if self._build != obj._build:
+      return False
+    return True
+
+  def __gt__(self, obj: object) -> bool:
+    """Compare SemVer for greater-than
+
+    See https://semver.org/#spec-item-11 for precedence
+
+    Args:
+      obj: Of type SemVer or a string
+
+    Returns:
+      True if all parts are equal, False otherwise
+    """
+    if isinstance(obj, str):
+      obj = SemVer(obj)
+    elif not isinstance(obj, SemVer):
+      raise TypeError(f"Cannot compare SemVer to {type(obj)}")
+
+    if self._major > obj._major:
+      return True
+    if self._minor > obj._minor:
+      return True
+    if self._patch > obj._patch:
+      return True
+    for this, other in zip(self._prerelease, obj._prerelease):
+      if REGEX_NUM_ID.match(this):
+        this = int(this)
+        if REGEX_NUM_ID.match(other):
+          other = int(other)
+          if this > other:
+            return True
+        # this is number
+        # other is alphanumeric
+      else:
+        if REGEX_NUM_ID.match(other):
+          # this is alphanumeric
+          # other is number
+          return True
+        # Both are alphanumeric, compare lexically
+        if this > other:
+          return True
+    return len(self._prerelease) < len(obj._prerelease)
+
+  def __ge__(self, obj: object) -> bool:
+    return (self > obj) or (self == obj)
+
+  def __lt__(self, obj: object) -> bool:
+    return not self >= obj
+
+  def __le__(self, obj: object) -> bool:
+    return not self > obj
