@@ -24,22 +24,22 @@ class TestSemVer(base.TestBase):
     self.assertRaises(TypeError, semver.SemVer, major=major, patch=patch)
 
     v = semver.SemVer(major=major, minor=minor, patch=patch)
-    self.assertEqual(major, v._major)  # pylint: disable=protected-access
-    self.assertEqual(minor, v._minor)  # pylint: disable=protected-access
-    self.assertEqual(patch, v._patch)  # pylint: disable=protected-access
-    self.assertListEqual([], v._prerelease)  # pylint: disable=protected-access
-    self.assertListEqual([], v._build)  # pylint: disable=protected-access
+    self.assertEqual(major, v.major)
+    self.assertEqual(minor, v.minor)
+    self.assertEqual(patch, v.patch)
+    self.assertListEqual([], v.prerelease_list)
+    self.assertListEqual([], v.build_list)
 
     s = f"{major}.{minor}"
     self.assertRaises(ValueError, semver.SemVer, string=s)
 
     s = f"{major}.{minor}.{patch}"
     v = semver.SemVer(string=s)
-    self.assertEqual(major, v._major)  # pylint: disable=protected-access
-    self.assertEqual(minor, v._minor)  # pylint: disable=protected-access
-    self.assertEqual(patch, v._patch)  # pylint: disable=protected-access
-    self.assertListEqual([], v._prerelease)  # pylint: disable=protected-access
-    self.assertListEqual([], v._build)  # pylint: disable=protected-access
+    self.assertEqual(major, v.major)
+    self.assertEqual(minor, v.minor)
+    self.assertEqual(patch, v.patch)
+    self.assertListEqual([], v.prerelease_list)
+    self.assertListEqual([], v.build_list)
 
     ###### Prerelease tagging #####
 
@@ -49,11 +49,11 @@ class TestSemVer(base.TestBase):
                       minor=minor,
                       patch=patch,
                       prerelease=prerelease)
-    self.assertEqual(major, v._major)  # pylint: disable=protected-access
-    self.assertEqual(minor, v._minor)  # pylint: disable=protected-access
-    self.assertEqual(patch, v._patch)  # pylint: disable=protected-access
-    self.assertListEqual([prerelease], v._prerelease)  # pylint: disable=protected-access
-    self.assertListEqual([], v._build)  # pylint: disable=protected-access
+    self.assertEqual(major, v.major)
+    self.assertEqual(minor, v.minor)
+    self.assertEqual(patch, v.patch)
+    self.assertEqual(prerelease, v.prerelease)
+    self.assertListEqual([], v.build_list)
 
     prerelease = f"{random.getrandbits(64):X}-" + string.ascii_letters
 
@@ -61,19 +61,19 @@ class TestSemVer(base.TestBase):
                       minor=minor,
                       patch=patch,
                       prerelease=prerelease)
-    self.assertEqual(major, v._major)  # pylint: disable=protected-access
-    self.assertEqual(minor, v._minor)  # pylint: disable=protected-access
-    self.assertEqual(patch, v._patch)  # pylint: disable=protected-access
-    self.assertListEqual([prerelease], v._prerelease)  # pylint: disable=protected-access
-    self.assertListEqual([], v._build)  # pylint: disable=protected-access
+    self.assertEqual(major, v.major)
+    self.assertEqual(minor, v.minor)
+    self.assertEqual(patch, v.patch)
+    self.assertEqual(prerelease, v.prerelease)
+    self.assertListEqual([], v.build_list)
 
     s = f"{major}.{minor}.{patch}-{prerelease}"
     v = semver.SemVer(string=s)
-    self.assertEqual(major, v._major)  # pylint: disable=protected-access
-    self.assertEqual(minor, v._minor)  # pylint: disable=protected-access
-    self.assertEqual(patch, v._patch)  # pylint: disable=protected-access
-    self.assertListEqual([prerelease], v._prerelease)  # pylint: disable=protected-access
-    self.assertListEqual([], v._build)  # pylint: disable=protected-access
+    self.assertEqual(major, v.major)
+    self.assertEqual(minor, v.minor)
+    self.assertEqual(patch, v.patch)
+    self.assertEqual(prerelease, v.prerelease)
+    self.assertListEqual([], v.build_list)
 
     s = f"{major}.{minor}.{patch}-"
     self.assertRaises(ValueError, semver.SemVer, string=s)
@@ -100,40 +100,40 @@ class TestSemVer(base.TestBase):
                       minor=minor,
                       patch=patch,
                       prerelease=[prerelease[0], ".".join(prerelease[1:])])
-    self.assertEqual(major, v._major)  # pylint: disable=protected-access
-    self.assertEqual(minor, v._minor)  # pylint: disable=protected-access
-    self.assertEqual(patch, v._patch)  # pylint: disable=protected-access
-    self.assertListEqual(prerelease, v._prerelease)  # pylint: disable=protected-access
-    self.assertListEqual([], v._build)  # pylint: disable=protected-access
+    self.assertEqual(major, v.major)
+    self.assertEqual(minor, v.minor)
+    self.assertEqual(patch, v.patch)
+    self.assertListEqual(prerelease, v.prerelease_list)
+    self.assertListEqual([], v.build_list)
 
     v = semver.SemVer(major=major,
                       minor=minor,
                       patch=patch,
                       prerelease=".".join(prerelease))
-    self.assertEqual(major, v._major)  # pylint: disable=protected-access
-    self.assertEqual(minor, v._minor)  # pylint: disable=protected-access
-    self.assertEqual(patch, v._patch)  # pylint: disable=protected-access
-    self.assertListEqual(prerelease, v._prerelease)  # pylint: disable=protected-access
-    self.assertListEqual([], v._build)  # pylint: disable=protected-access
+    self.assertEqual(major, v.major)
+    self.assertEqual(minor, v.minor)
+    self.assertEqual(patch, v.patch)
+    self.assertListEqual(prerelease, v.prerelease_list)
+    self.assertListEqual([], v.build_list)
 
     ###### Build metadata tagging #####
 
     build = f"{random.getrandbits(64):X}-" + string.ascii_letters
 
     v = semver.SemVer(major=major, minor=minor, patch=patch, build=build)
-    self.assertEqual(major, v._major)  # pylint: disable=protected-access
-    self.assertEqual(minor, v._minor)  # pylint: disable=protected-access
-    self.assertEqual(patch, v._patch)  # pylint: disable=protected-access
-    self.assertListEqual([], v._prerelease)  # pylint: disable=protected-access
-    self.assertListEqual([build], v._build)  # pylint: disable=protected-access
+    self.assertEqual(major, v.major)
+    self.assertEqual(minor, v.minor)
+    self.assertEqual(patch, v.patch)
+    self.assertListEqual([], v.prerelease_list)
+    self.assertEqual(build, v.build)
 
     s = f"{major}.{minor}.{patch}+{build}"
     v = semver.SemVer(string=s)
-    self.assertEqual(major, v._major)  # pylint: disable=protected-access
-    self.assertEqual(minor, v._minor)  # pylint: disable=protected-access
-    self.assertEqual(patch, v._patch)  # pylint: disable=protected-access
-    self.assertListEqual([], v._prerelease)  # pylint: disable=protected-access
-    self.assertListEqual([build], v._build)  # pylint: disable=protected-access
+    self.assertEqual(major, v.major)
+    self.assertEqual(minor, v.minor)
+    self.assertEqual(patch, v.patch)
+    self.assertListEqual([], v.prerelease_list)
+    self.assertEqual(build, v.build)
 
     s = f"{major}.{minor}.{patch}+"
     self.assertRaises(ValueError, semver.SemVer, string=s)
@@ -160,21 +160,21 @@ class TestSemVer(base.TestBase):
                       minor=minor,
                       patch=patch,
                       build=[build[0], ".".join(build[1:])])
-    self.assertEqual(major, v._major)  # pylint: disable=protected-access
-    self.assertEqual(minor, v._minor)  # pylint: disable=protected-access
-    self.assertEqual(patch, v._patch)  # pylint: disable=protected-access
-    self.assertListEqual([], v._prerelease)  # pylint: disable=protected-access
-    self.assertListEqual(build, v._build)  # pylint: disable=protected-access
+    self.assertEqual(major, v.major)
+    self.assertEqual(minor, v.minor)
+    self.assertEqual(patch, v.patch)
+    self.assertListEqual([], v.prerelease_list)
+    self.assertListEqual(build, v.build_list)
 
     v = semver.SemVer(major=major,
                       minor=minor,
                       patch=patch,
                       build=".".join(build))
-    self.assertEqual(major, v._major)  # pylint: disable=protected-access
-    self.assertEqual(minor, v._minor)  # pylint: disable=protected-access
-    self.assertEqual(patch, v._patch)  # pylint: disable=protected-access
-    self.assertListEqual([], v._prerelease)  # pylint: disable=protected-access
-    self.assertListEqual(build, v._build)  # pylint: disable=protected-access
+    self.assertEqual(major, v.major)
+    self.assertEqual(minor, v.minor)
+    self.assertEqual(patch, v.patch)
+    self.assertListEqual([], v.prerelease_list)
+    self.assertListEqual(build, v.build_list)
 
     ###### Both tagging #####
 
@@ -183,11 +183,11 @@ class TestSemVer(base.TestBase):
                       patch=patch,
                       prerelease=".".join(prerelease),
                       build=".".join(build))
-    self.assertEqual(major, v._major)  # pylint: disable=protected-access
-    self.assertEqual(minor, v._minor)  # pylint: disable=protected-access
-    self.assertEqual(patch, v._patch)  # pylint: disable=protected-access
-    self.assertListEqual(prerelease, v._prerelease)  # pylint: disable=protected-access
-    self.assertListEqual(build, v._build)  # pylint: disable=protected-access
+    self.assertEqual(major, v.major)
+    self.assertEqual(minor, v.minor)
+    self.assertEqual(patch, v.patch)
+    self.assertListEqual(prerelease, v.prerelease_list)
+    self.assertListEqual(build, v.build_list)
 
   def test_equality(self):
     major = random.randint(0, 100)
@@ -269,3 +269,40 @@ class TestSemVer(base.TestBase):
 
     r = f"<witch_ver.semver.SemVer '{s}'>"
     self.assertEqual(repr(v), r)
+
+  def test_bump(self):
+    major = random.randint(0, 100)
+    minor = random.randint(0, 100)
+    patch = random.randint(0, 100)
+    prerelease = f"{random.getrandbits(64):X}.alpha"
+    build = f"{random.getrandbits(64):X}.2022"
+
+    s = f"{major}.{minor}.{patch}-{prerelease}+{build}"
+
+    v = semver.SemVer(s)
+    v.bump_major()
+    self.assertEqual(major + 1, v.major)
+    self.assertEqual(0, v.minor)
+    self.assertEqual(0, v.patch)
+    self.assertListEqual([], v.prerelease_list)
+    self.assertListEqual([], v.build_list)
+
+    v.append_prerelease(prerelease)
+    v.append_build(build)
+
+    v.bump_patch()
+    self.assertEqual(major + 1, v.major)
+    self.assertEqual(0, v.minor)
+    self.assertEqual(1, v.patch)
+    self.assertListEqual([], v.prerelease_list)
+    self.assertListEqual([], v.build_list)
+
+    v.append_prerelease(prerelease)
+    v.append_build(build)
+
+    v.bump_minor()
+    self.assertEqual(major + 1, v.major)
+    self.assertEqual(1, v.minor)
+    self.assertEqual(0, v.patch)
+    self.assertListEqual([], v.prerelease_list)
+    self.assertListEqual([], v.build_list)
