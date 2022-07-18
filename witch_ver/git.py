@@ -6,7 +6,7 @@ import functools
 import os
 import pathlib
 import re
-from typing import List, Union
+from typing import List, Tuple, Union
 
 from witch_ver import runner
 from witch_ver.semver import SemVer
@@ -34,7 +34,7 @@ class Git:
       path: Path to .git folder (given to git -C <path>), None will use cwd()
       version_prefix: Prefix for git tags describing version (to filter)
       describe_args: Arguments used for git describe, None will use default:
-        --tags --dirty --always --long --match {version_prefix}*
+        --tags --always --long --match {version_prefix}*
       custom_str_fmt: Custom format for str(Git), see Git.str() for format
         specifications. None will use str(SemVer) and tags included as follows.
       dirty_in_pre: True will add "dirty" to prerelease tags, False to build
@@ -49,14 +49,14 @@ class Git:
         False to build tags, None for omission
     """
     if path is None:
-      path = pathlib.Path(".").absolute()
-    self._path = path
+      path = "."
+    self._path = pathlib.Path(path).resolve()
     self._semver: SemVer = None
 
     self._version_prefix = version_prefix
 
     if describe_args is None:
-      describe_args = ["--tags", "--dirty", "--always", "--long"]
+      describe_args = ["--tags", "--always", "--long"]
       if version_prefix is not None:
         describe_args.extend(("--match", version_prefix + "*"))
     self._describe_args = describe_args
@@ -86,31 +86,30 @@ class Git:
     """
     run = functools.partial(runner.run, "git", cwd=self._path)
 
+    def run_check(cmd, *args, **kwargs) -> Tuple[str, int]:
+      stdout, returncode = run(cmd, *args, **kwargs)
+      if stdout is None or returncode != 0:
+        raise RuntimeError(f"Command failed {' '.join(cmd)}")
+      return stdout, returncode
+
     _, returncode = run(["rev-parse", "--git-dir"])
     if returncode != 0:
       raise RuntimeError(f"Path is not inside a git repository '{self._path}'")
 
-    describe, returncode = run(["describe"] + self._describe_args)
-    if describe is None or returncode != 0:
-      raise RuntimeError("git describe failed")
+    describe, returncode = run_check(["describe"] + self._describe_args)
 
-    self._sha, returncode = run(["rev-parse", "HEAD"])
-    if self._sha is None or returncode != 0:
-      raise RuntimeError("git rev-pase failed")
+    self._sha, returncode = run_check(["rev-parse", "HEAD"])
 
-    self._branch, returncode = run(["rev-parse", "--abbrev-ref", "HEAD"])
-    if self._branch is None or returncode != 0:
-      raise RuntimeError("git rev-parse --abbrev-ref HEAD failed")
+    self._branch, returncode = run_check(["rev-parse", "--abbrev-ref", "HEAD"])
 
     if self._branch == "HEAD":
-      branches, returncode = run(
+      branches, returncode = run_check(
           ["branch", "--format=%(refname:lstrip=2)", "--contains"])
-      if branches is None or returncode != 0:
-        raise RuntimeError("git branch failed")
 
       branches = branches.splitlines()
       if "(" in branches[0]:
-        branches.pop(0)
+        # On git v1.5.0-rc1 detached head information was added to git branch
+        branches.pop(0)  # pragma: no cover since this is 15 years old
 
       if "master" in branches:
         self._branch = "master"
@@ -121,15 +120,22 @@ class Git:
       else:
         self._branch = branches[0]
 
-    raw, returncode = run(["show", "-s", "--format=%ci", "HEAD"])
-    if raw is None or returncode != 0:
-      raise RuntimeError("git show failed")
+    raw, returncode = run_check(["show", "-s", "--format=%ci", "HEAD"])
     self._date = datetime.datetime.strptime(raw, "%Y-%m-%d %H:%M:%S %z")
 
     self._dirty = False
-    if describe.endswith("-dirty"):
+    _, returncode = run(["diff", "--quiet", "HEAD"])
+    if returncode == 0:
+      # No difference between HEAD and working tree
+      # Check for any untracked and unignored files
+      status, returncode = run_check(["status", "--porcelain"])
+      changes = status.splitlines()
+      for c in changes:
+        if c[0] == "?":
+          self._dirty = True
+          break
+    else:
       self._dirty = True
-      describe = describe.removesuffix("-dirty")
 
     if "-" in describe:
       m = REGEX.match(describe)
@@ -141,9 +147,7 @@ class Git:
       self._tag = m["tag"]
       self._sha_abbrev = m["sha"]
     else:
-      d, returncode = run(["rev-list", "HEAD", "--count"])
-      if d is None or returncode != 0:
-        raise RuntimeError("git rev-list failed")
+      d, returncode = run_check(["rev-list", "HEAD", "--count"])
 
       self._distance = int(d)
       self._tag = None
@@ -240,7 +244,12 @@ class Git:
 
   @property
   def is_dirty(self) -> bool:
-    """True means repository has uncommitted changes
+    """True means repository has changes from HEAD
+
+    If changes in the index are reverted in the working tree then it is not
+    dirty since it is equivalent to HEAD
+
+    If there is a untracked and unignored file, that is dirty
     """
     if self._sha is None:
       self.fetch_git_info()
