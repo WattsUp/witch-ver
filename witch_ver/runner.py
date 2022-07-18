@@ -8,7 +8,7 @@ from typing import List, Tuple, Union
 
 def run(cmd: str,
         args: List[str],
-        cwd: Union[os.PathLike, str] = None) -> Tuple[str, int]:
+        cwd: Union[str, bytes, os.PathLike] = None) -> Tuple[str, int]:
   """Run a command and capture its output and return code
 
   Args:
@@ -20,10 +20,10 @@ def run(cmd: str,
     stdout, return code
   """
   cmd = [cmd] + args
-  cmd_str = " ".join(cmd)
   try:
     result = subprocess.run(cmd, capture_output=True, cwd=cwd, check=False)
   except OSError:
+    cmd_str = " ".join(cmd)
     print(f"Failed to run '{cmd_str}'")
     return None, None
   return result.stdout.strip().decode(), result.returncode

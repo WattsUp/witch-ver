@@ -19,7 +19,7 @@ class Git:
   """
 
   def __init__(self,
-               path: Union[os.PathLike, str] = None,
+               path: Union[str, bytes, os.PathLike] = None,
                version_prefix: str = "v",
                describe_args: List[str] = None,
                custom_str_fmt: str = None,
