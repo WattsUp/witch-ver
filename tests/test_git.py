@@ -20,7 +20,7 @@ class TestGit(base.TestBase):
 
     # Can't commit a git repo to this repo
     # Test repos are zipped, extract before testing
-    for i in range(6):
+    for i in range(7):
       path = cls._DATA_ROOT.joinpath(f"git-{i}")
       if not path.exists():
         z = path.with_suffix(".zip")
@@ -118,7 +118,7 @@ class TestGit(base.TestBase):
     self.assertEqual(2, g.distance)
     self.assertEqual(None, g.tag)
 
-    # git-3 is detached from the main branch
+    # git-5 is detached from the main branch
     # Has a change in the index but reverted in the working tree
     path = self._DATA_ROOT.joinpath("git-5")
     g = git.Git(path=path, version_prefix=None)
@@ -131,4 +131,52 @@ class TestGit(base.TestBase):
     self.assertEqual(1, g.distance)
     self.assertEqual("0.0.0", g.tag)
 
+  def test_build_semver(self):
+    # git-6 is tagged as a RC and is dirty
+    path = self._DATA_ROOT.joinpath("git-6")
+    g = git.Git(path=path,
+                dirty_in_pre=True,
+                distance_in_pre=True,
+                sha_in_pre=True,
+                sha_abbrev_in_pre=True,
+                date_in_pre=True)
+    sha = "ea4d6f6162f033dd6a8056498def4d42980a531f"
+    sha_abbrev = sha[:7]
 
+    self.assertRaises(ValueError, g.build_semver)
+
+    g._version_prefix = "ver"  # pylint: disable=protected-access
+
+    s = str(g.semver)
+    target = f"0.0.0-rc1.dirty.p0.g{sha}.g{sha_abbrev}.20220719T185017Z"
+    self.assertEqual(target, s)
+
+    g._dirty_in_pre = False  # pylint: disable=protected-access
+    g._distance_in_pre = False  # pylint: disable=protected-access
+    g._sha_in_pre = False  # pylint: disable=protected-access
+    g._sha_abbrev_in_pre = False  # pylint: disable=protected-access
+    g._date_in_pre = False  # pylint: disable=protected-access
+
+    g.build_semver()
+    s = str(g.semver)
+    target = f"0.0.0-rc1+dirty.p0.g{sha}.g{sha_abbrev}.20220719T185017Z"
+    self.assertEqual(target, s)
+
+    g._dirty_in_pre = None  # pylint: disable=protected-access
+    g._distance_in_pre = None  # pylint: disable=protected-access
+    g._sha_in_pre = None  # pylint: disable=protected-access
+    g._sha_abbrev_in_pre = None  # pylint: disable=protected-access
+    g._date_in_pre = None  # pylint: disable=protected-access
+
+    g.build_semver()
+    s = str(g.semver)
+    target = "0.0.0-rc1"
+    self.assertEqual(target, s)
+
+    # git-3 is detached from the master branch
+    # Has a change in the index but reverted in the working tree
+    path = self._DATA_ROOT.joinpath("git-3")
+    g = git.Git(path=path)
+    s = str(g.semver)
+    target = "0.0.0-no-tag.p2.gf70f3f5+20220718T190625Z"
+    self.assertEqual(target, s)

@@ -168,16 +168,13 @@ class Git:
     if self._tag is None:
       self._semver = SemVer(major=0, minor=0, patch=0, prerelease="no-tag")
     else:
-      if not self._tag.startswith(self._version_prefix):
-        raise ValueError("tag does not start with version_prefix "
-                         f"'{self._tag}'")
-
       self._semver = SemVer(self._tag.removeprefix(self._version_prefix))
 
-    if self._dirty_in_pre:
-      self._semver.append_prerelease("dirty")
-    elif self._dirty_in_pre is False:
-      self._semver.append_build("dirty")
+    if self._dirty:
+      if self._dirty_in_pre:
+        self._semver.append_prerelease("dirty")
+      elif self._dirty_in_pre is False:
+        self._semver.append_build("dirty")
 
     if self._distance_in_pre:
       self._semver.append_prerelease(f"p{self._distance}")

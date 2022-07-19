@@ -47,6 +47,12 @@ class SemVer:
       TypeError if s is None and major, minor, or patch is missing
       ValueError if any any values are improper format
     """
+    self._major = None
+    self._minor = None
+    self._patch = None
+    self._prerelease: List[str] = []
+    self._build: List[str] = []
+
     if string is not None:
       m = REGEX.match(string)
       if m is None:
@@ -64,8 +70,6 @@ class SemVer:
     self._major = int(major)
     self._minor = int(minor)
     self._patch = int(patch)
-    self._prerelease: List[str] = []
-    self._build: List[str] = []
     if prerelease is not None:
       if isinstance(prerelease, str):
         self.append_prerelease(prerelease)
