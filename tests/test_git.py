@@ -148,8 +148,15 @@ class TestGit(base.TestBase):
         "pretty_str": f"v{major}.{minor}.{patch}-rc1"
     }
     g = git.GitVer(**target)
-    self.assertDictEqual(target, g.asdict())
-    self.assertEqual(g, git.GitVer(**g.asdict()))
+    d = g.asdict()
+    self.assertDictEqual(target, d)
+    self.assertEqual(g, git.GitVer(**d))
+
+    d["date"] = d["date"].isoformat()
+    self.assertEqual(g, git.GitVer(**d))
+
+    d = g.asdict(isoformat_date=True)
+    self.assertEqual(g, git.GitVer(**d))
 
   def test_build_semver(self):
     # git-6 is tagged as a RC and is dirty

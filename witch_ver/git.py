@@ -53,6 +53,9 @@ class GitVer(SemVer):
     self._tag_prefix: str = tag_prefix
     self._pretty_str: str = kwargs.pop("pretty_str", None)
 
+    if isinstance(self._date, str):
+      self._date = datetime.datetime.fromisoformat(self._date)
+
     if self._tag is None:
       super().__init__(major=0, minor=0, patch=0, prerelease="untagged")
     else:
@@ -107,8 +110,12 @@ class GitVer(SemVer):
   def __repr__(self) -> str:
     return f"<witch_ver.git.GitVer '{self.semver}'>"
 
-  def asdict(self) -> dict:
+  def asdict(self, isoformat_date: bool = False) -> dict:
     """Convert GitVer to dictionary
+
+    Args:
+      isoformat_date: True will convert date to isoformat, False will leave it
+        as datetime
 
     Returns:
       Dictionary of tag, tag_prefix, sha, sha_abbrev, branch, date, dirty,
@@ -120,7 +127,7 @@ class GitVer(SemVer):
         "sha": self._sha,
         "sha_abbrev": self._sha_abbrev,
         "branch": self._branch,
-        "date": self._date,
+        "date": self._date.isoformat() if isoformat_date else self._date,
         "dirty": self._dirty,
         "distance": self._distance,
         "pretty_str": self._pretty_str
