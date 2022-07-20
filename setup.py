@@ -37,7 +37,7 @@ setuptools.setup(
     long_description=longDescription,
     long_description_content_type="text/markdown",
     license="MIT",
-    packages=setuptools.find_packages(),
+    packages=setuptools.find_packages(exclude=["tests", "tests.*"]),
     package_data={module_folder: []},
     install_requires=required,
     extras_require=extras_require,
