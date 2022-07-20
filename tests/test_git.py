@@ -205,7 +205,7 @@ class TestGit(base.TestBase):
 
     g._custom_str_func = git.str_func_pep440  # pylint: disable=protected-access
     s = str(g)
-    target = "v1.2.3-rc1+0.gdd0ae6e.dirty"
+    target = "1.2.3-rc1+0.gdd0ae6e.dirty"
     self.assertEqual(target, s)
 
     g._custom_str_func = git.str_func_git_describe  # pylint: disable=protected-access
@@ -222,7 +222,7 @@ class TestGit(base.TestBase):
     g._dirty = False  # pylint: disable=protected-access
     g._custom_str_func = git.str_func_pep440  # pylint: disable=protected-access
     s = str(g)
-    target = "v1.2.3-rc1"
+    target = "1.2.3-rc1"
     self.assertEqual(target, s)
 
     g._custom_str_func = git.str_func_git_describe  # pylint: disable=protected-access

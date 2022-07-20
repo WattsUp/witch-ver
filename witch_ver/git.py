@@ -302,6 +302,8 @@ class Git:
 def str_func_pep440(g: Git) -> str:
   """Format a Git as a string compliant with PEP440
 
+  Does strip tag_prefix
+
   TAG if precisely at that point
   0+untagged.DISTANCE.gSHA[.dirty] if untagged
   TAG.DISTANCE.gSHA[.dirty] if tag has a '+'
@@ -319,6 +321,8 @@ def str_func_pep440(g: Git) -> str:
   buf = g.tag
   if buf is None:
     buf = "0+untagged"
+  else:
+    buf = buf.removeprefix(g.tag_prefix)
 
   if g.distance == 0 and not g.is_dirty:
     return buf
