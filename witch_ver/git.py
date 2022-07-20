@@ -1,6 +1,8 @@
 """Interface to a git repository
 """
 
+from __future__ import annotations
+
 import datetime
 import functools
 import os
@@ -14,29 +16,22 @@ from witch_ver.semver import SemVer
 REGEX = re.compile(r"^(?P<tag>.+)-(?P<distance>\d+)-g(?P<sha>[0-9a-f]+)$")
 
 
-class Git:
-  """Interface to a git repository
+class GitVer(SemVer):
+  """Semantic version with extra git information
   """
 
   def __init__(self,
-               path: Union[str, bytes, os.PathLike] = None,
                tag_prefix: str = "v",
-               describe_args: List[str] = None,
-               custom_str_func: Callable = None,
                dirty_in_pre: bool = True,
                distance_in_pre: bool = True,
                sha_in_pre: bool = None,
                sha_abbrev_in_pre: bool = True,
-               date_in_pre: bool = False) -> None:
+               date_in_pre: bool = False,
+               **kwargs) -> None:
     """Create a git interface
 
     Args:
-      path: Path to .git folder (given to git -C <path>), None will use cwd()
       tag_prefix: Prefix for git tags describing version (to filter)
-      describe_args: Arguments used for git describe, None will use default:
-        --tags --always --long --match {tag_prefix}*
-      custom_str_func: Custom format function for str(Git) which takes a single
-        argument self. None will use str(SemVer) and tags included as follows.
       dirty_in_pre: True will add "dirty" to prerelease tags, False to build
         tags, None for omission
       distance_in_pre: True will add "p{n}" to prerelease tags, False to build
@@ -48,218 +43,117 @@ class Git:
       date_in_pre: True will add "{date:%Y%m%dT%H%M%SZ}" to prerelease tags,
         False to build tags, None for omission
     """
-    if path is None:
-      path = "."
-    self._path = pathlib.Path(path).resolve()
-    self._semver: SemVer = None
-
-    self._tag_prefix = tag_prefix
-
-    if describe_args is None:
-      describe_args = ["--tags", "--always", "--long"]
-      if tag_prefix is not None:
-        describe_args.extend(("--match", tag_prefix + "*"))
-    self._describe_args = describe_args
-
-    self._sha: str = None
-    self._sha_abbrev: str = None
-    self._branch: str = None
-    self._date: datetime.datetime = None
-    self._dirty: bool = None
-    self._distance: int = None
-    self._tag: str = None
-
-    self._custom_str_func = custom_str_func
-
-    self._dirty_in_pre = dirty_in_pre
-    self._distance_in_pre = distance_in_pre
-    self._sha_in_pre = sha_in_pre
-    self._sha_abbrev_in_pre = sha_abbrev_in_pre
-    self._date_in_pre = date_in_pre
-
-  def fetch_git_info(self) -> None:
-    """Run git commands to fetch current repository status
-
-    Raises:
-      RuntimeError if a git command fails
-      ValueError if git describe doesn't match REGEX
-    """
-    self._semver = None
-    run = functools.partial(runner.run, "git", cwd=self._path)
-
-    def run_check(cmd, *args, **kwargs) -> Tuple[str, int]:
-      stdout, returncode = run(cmd, *args, **kwargs)
-      if stdout is None or returncode != 0:
-        raise RuntimeError(
-            f"Command failed {' '.join(cmd)}"
-        )  # pragma: no cover since all commands should fail gracefully
-      return stdout, returncode
-
-    _, returncode = run(["rev-parse", "--git-dir"])
-    if returncode != 0:
-      raise RuntimeError(f"Path is not inside a git repository '{self._path}'")
-
-    self._sha, returncode = run(["rev-parse", "HEAD"])
-    if returncode != 0:
-      # Likely HEAD doesn't point to anything aka no commits
-      self._sha = ""
-      self._sha_abbrev = ""
-      self._branch = "master"
-      self._date = datetime.datetime.now()
-      self._distance = 0
-      self._tag = None
-
-      status, returncode = run_check(["status", "--porcelain"])
-      self._dirty = len(status) > 0
-      return
-
-    describe, returncode = run_check(["describe"] + self._describe_args)
-
-    self._branch, returncode = run_check(["rev-parse", "--abbrev-ref", "HEAD"])
-
-    if self._branch == "HEAD":
-      branches, returncode = run_check(
-          ["branch", "--format=%(refname:lstrip=2)", "--contains"])
-
-      branches = branches.splitlines()
-      if "(" in branches[0]:
-        # On git v1.5.0-rc1 detached head information was added to git branch
-        branches.pop(0)  # pragma: no cover since this is 15 years old
-
-      if "master" in branches:
-        self._branch = "master"
-      elif "main" in branches:
-        self._branch = "main"
-      elif len(branches) == 0:
-        self._branch = None
-      else:
-        self._branch = branches[0]
-
-    raw, returncode = run_check(["show", "-s", "--format=%ci", "HEAD"])
-    self._date = datetime.datetime.strptime(raw, "%Y-%m-%d %H:%M:%S %z")
-
-    self._dirty = False
-    _, returncode = run(["diff", "--quiet", "HEAD"])
-    if returncode == 0:
-      # No difference between HEAD and working tree
-      # Check for any untracked and unignored files
-      status, returncode = run_check(["status", "--porcelain"])
-      changes = status.splitlines()
-      for c in changes:
-        if c[0] == "?":
-          self._dirty = True
-          break
-    else:
-      self._dirty = True
-
-    if "-" in describe:
-      m = REGEX.match(describe)
-      if m is None:
-        raise ValueError(f"git describe did not match regex '{describe}'")
-      m = m.groupdict()
-
-      self._distance = int(m["distance"])
-      self._tag = m["tag"]
-      self._sha_abbrev = m["sha"]
-    else:
-      d, returncode = run_check(["rev-list", "HEAD", "--count"])
-
-      self._distance = int(d)
-      self._tag = None
-      self._sha_abbrev = describe
-
-  def build_semver(self) -> SemVer:
-    """Build semantic version for git information
-
-    Returns:
-      SemVer object built by rules given in init
-
-    Raises:
-      ValueError if tag is missing tag_prefix
-    """
-    if self._sha is None:
-      self.fetch_git_info()
+    self._sha: str = kwargs.pop("sha", None)
+    self._sha_abbrev: str = kwargs.pop("sha_abbrev", None)
+    self._branch: str = kwargs.pop("branch", None)
+    self._date: datetime.datetime = kwargs.pop("date", None)
+    self._dirty: bool = kwargs.pop("dirty", None)
+    self._distance: int = kwargs.pop("distance", None)
+    self._tag: str = kwargs.pop("tag", None)
+    self._tag_prefix: str = tag_prefix
+    self._pretty_str: str = kwargs.pop("pretty_str", None)
 
     if self._tag is None:
-      self._semver = SemVer(major=0, minor=0, patch=0, prerelease="untagged")
+      super().__init__(major=0, minor=0, patch=0, prerelease="untagged")
     else:
-      self._semver = SemVer(self._tag.removeprefix(self._tag_prefix))
+      tag = self._tag
+      if self._tag_prefix is not None:
+        tag = tag.removeprefix(self._tag_prefix)
+      super().__init__(tag)
 
-    if self._distance_in_pre:
-      self._semver.append_prerelease(f"p{self._distance}")
-    elif self._distance_in_pre is False:
-      self._semver.append_build(f"p{self._distance}")
+    if len(kwargs) > 0:
+      raise TypeError(f"Unknown kwargs: {kwargs.keys()}")
+
+    if self._distance is not None:
+      if distance_in_pre:
+        self.append_prerelease(f"p{self._distance}")
+      elif distance_in_pre is False:
+        self.append_build(f"p{self._distance}")
 
     if self._dirty:
-      if self._dirty_in_pre:
-        self._semver.append_prerelease("dirty")
-      elif self._dirty_in_pre is False:
-        self._semver.append_build("dirty")
+      if dirty_in_pre:
+        self.append_prerelease("dirty")
+      elif dirty_in_pre is False:
+        self.append_build("dirty")
 
-    if self._sha_in_pre:
-      self._semver.append_prerelease("g" + self._sha)
-    elif self._sha_in_pre is False:
-      self._semver.append_build("g" + self._sha)
+    if self._sha is not None:
+      if sha_in_pre:
+        self.append_prerelease(f"g{self._sha}")
+      elif sha_in_pre is False:
+        self.append_build(f"g{self._sha}")
 
-    if self._sha_abbrev_in_pre:
-      self._semver.append_prerelease("g" + self._sha_abbrev)
-    elif self._sha_abbrev_in_pre is False:
-      self._semver.append_build("g" + self._sha_abbrev)
+    if self._sha_abbrev is not None:
+      if sha_abbrev_in_pre:
+        self.append_prerelease(f"g{self._sha_abbrev}")
+      elif sha_abbrev_in_pre is False:
+        self.append_build(f"g{self._sha_abbrev}")
 
-    s = self._date.astimezone(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    if self._date_in_pre:
-      self._semver.append_prerelease(s)
-    elif self._date_in_pre is False:
-      self._semver.append_build(s)
+    if self._date is not None:
+      s = self._date.astimezone(
+          datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+      if date_in_pre:
+        self.append_prerelease(s)
+      elif date_in_pre is False:
+        self.append_build(s)
 
-    return self._semver
+    if callable(self._pretty_str):
+      self._pretty_str = self._pretty_str(self)
 
   def __str__(self) -> str:
-    if self._custom_str_func is None:
-      return str(self.semver)
-    return self._custom_str_func(self)
+    if self._pretty_str is None:
+      return self.semver
+    return self._pretty_str
 
   def __repr__(self) -> str:
-    return f"<witch_ver.git.Git '{self.semver}'>"
+    return f"<witch_ver.git.GitVer '{self.semver}'>"
+
+  def asdict(self) -> dict:
+    """Convert GitVer to dictionary
+
+    Returns:
+      Dictionary of tag, tag_prefix, sha, sha_abbrev, branch, date, dirty,
+        distance, and pretty_str (output of str(GitVer))
+    """
+    return {
+        "tag": self._tag,
+        "tag_prefix": self._tag_prefix,
+        "sha": self._sha,
+        "sha_abbrev": self._sha_abbrev,
+        "branch": self._branch,
+        "date": self._date,
+        "dirty": self._dirty,
+        "distance": self._distance,
+        "pretty_str": self._pretty_str
+    }
 
   @property
-  def semver(self) -> SemVer:
+  def semver(self) -> str:
     """Semantic version of repository
     """
-    if self._semver is None:
-      return self.build_semver()
-    return self._semver
+    return super().__str__()
 
   @property
   def sha(self) -> str:
     """git SHA of latest commit
     """
-    if self._sha is None:
-      self.fetch_git_info()
     return self._sha
 
   @property
   def sha_abbrev(self) -> str:
     """git SHA of latest commit, abbreviated length (git decides how long)
     """
-    if self._sha is None:
-      self.fetch_git_info()
     return self._sha_abbrev
 
   @property
   def branch(self) -> str:
     """Current branch
     """
-    if self._sha is None:
-      self.fetch_git_info()
     return self._branch
 
   @property
   def date(self) -> datetime.datetime:
     """Date of latest commit
     """
-    if self._sha is None:
-      self.fetch_git_info()
     return self._date
 
   @property
@@ -271,24 +165,18 @@ class Git:
 
     If there is a untracked and unignored file, that is dirty
     """
-    if self._sha is None:
-      self.fetch_git_info()
     return self._dirty
 
   @property
   def distance(self) -> int:
     """Distance between latest commit and closest tag
     """
-    if self._sha is None:
-      self.fetch_git_info()
     return self._distance
 
   @property
   def tag(self) -> str:
     """Closest tag to latest commit, possible None if no tags exist
     """
-    if self._sha is None:
-      self.fetch_git_info()
     return self._tag
 
   @property
@@ -299,7 +187,140 @@ class Git:
     return self._tag_prefix
 
 
-def str_func_pep440(g: Git) -> str:
+def fetch(path: Union[str, bytes, os.PathLike] = None,
+          tag_prefix: str = "v",
+          describe_args: List[str] = None,
+          custom_str_func: Callable = None,
+          **kwargs) -> GitVer:
+  """Run git commands to fetch current repository status
+
+  Args:
+    path: Path to .git folder (given to git -C <path>), None will use cwd()
+    tag_prefix: Prefix for git tags describing version (to filter)
+    describe_args: Arguments used for git describe, None will use default:
+      --tags --always --long --match {tag_prefix}*
+    custom_str_func: Custom format function for str(Git) which takes a single
+      argument self. None will use str(SemVer) and tags included as follows.
+    kwargs: Other arguments passed to GitVer.__init__
+
+  Raises:
+    RuntimeError if a git command fails
+    ValueError if git describe doesn't match REGEX
+  """
+  if path is None:
+    path = "."
+  path = pathlib.Path(path).resolve()
+
+  if describe_args is None:
+    describe_args = ["--tags", "--always", "--long"]
+    if tag_prefix is not None:
+      describe_args.extend(("--match", tag_prefix + "*"))
+
+  run = functools.partial(runner.run, "git", cwd=path)
+
+  def run_check(cmd, *args, **kwargs) -> Tuple[str, int]:
+    stdout, returncode = run(cmd, *args, **kwargs)
+    if stdout is None or returncode != 0:
+      raise RuntimeError(
+          f"Command failed {' '.join(cmd)}"
+      )  # pragma: no cover since all commands should fail gracefully
+    return stdout, returncode
+
+  _, returncode = run(["rev-parse", "--git-dir"])
+  if returncode != 0:
+    raise RuntimeError(f"Path is not inside a git repository '{path}'")
+
+  default_branch, returncode = run(["config", "init.defaultBranch"])
+  if returncode != 0:
+    # This key was added in 2.28. The default prior was master
+    default_branch = "master"  # pragma: no cover
+
+  sha, returncode = run(["rev-parse", "HEAD"])
+  if returncode != 0:
+    # Likely HEAD doesn't point to anything aka no commits
+    kwargs["sha"] = ""
+    kwargs["sha_abbrev"] = ""
+    kwargs["branch"] = default_branch
+    kwargs["date"] = datetime.datetime.now()
+    kwargs["distance"] = 0
+    kwargs["tag"] = None
+
+    status, returncode = run_check(["status", "--porcelain"])
+    kwargs["dirty"] = len(status) > 0
+    return GitVer(tag_prefix=tag_prefix, pretty_str=custom_str_func, **kwargs)
+
+  describe, returncode = run_check(["describe"] + describe_args)
+
+  branch, returncode = run_check(["rev-parse", "--abbrev-ref", "HEAD"])
+
+  if branch == "HEAD":
+    branches, returncode = run_check(
+        ["branch", "--format=%(refname:lstrip=2)", "--contains"])
+
+    branches = branches.splitlines()
+    if "(" in branches[0]:
+      # On git v1.5.0-rc1 detached head information was added to git branch
+      branches.pop(0)  # pragma: no cover since this is 15 years old
+
+    branch = None
+    default_branches = [default_branch, "master", "main"]
+    for b in default_branches:
+      if b in branches:
+        branch = b
+        break
+    if branch is None:
+      if len(branches) == 0:
+        branch = None
+      else:
+        branch = branches[0]
+
+  raw, returncode = run_check(["show", "-s", "--format=%ci", "HEAD"])
+  date = datetime.datetime.strptime(raw, "%Y-%m-%d %H:%M:%S %z")
+
+  dirty = False
+  _, returncode = run(["diff", "--quiet", "HEAD"])
+  if returncode == 0:
+    # No difference between HEAD and working tree
+    # Check for any untracked and unignored files
+    status, returncode = run_check(["status", "--porcelain"])
+    changes = status.splitlines()
+    for c in changes:
+      if c[0] == "?":
+        dirty = True
+        break
+  else:
+    dirty = True
+
+  if "-" in describe:
+    m = REGEX.match(describe)
+    if m is None:
+      raise ValueError(f"git describe did not match regex '{describe}'")
+    m = m.groupdict()
+
+    distance = int(m["distance"])
+    tag = m["tag"]
+    sha_abbrev = m["sha"]
+  else:
+    d, returncode = run_check(["rev-list", "HEAD", "--count"])
+
+    distance = int(d)
+    tag = None
+    sha_abbrev = describe
+
+  kwargs["sha"] = sha
+  kwargs["sha_abbrev"] = sha_abbrev
+  kwargs["branch"] = branch
+  kwargs["date"] = date
+  kwargs["distance"] = distance
+  kwargs["tag"] = tag
+
+  status, returncode = run_check(["status", "--porcelain"])
+  kwargs["dirty"] = dirty
+
+  return GitVer(tag_prefix=tag_prefix, pretty_str=custom_str_func, **kwargs)
+
+
+def str_func_pep440(g: GitVer) -> str:
   """Format a Git as a string compliant with PEP440
 
   Does strip tag_prefix
@@ -334,7 +355,7 @@ def str_func_pep440(g: Git) -> str:
   return buf
 
 
-def str_func_git_describe(g: Git) -> str:
+def str_func_git_describe(g: GitVer) -> str:
   """Format a Git as a string that matches the output of
   `git describe --tags --dirty --always`
 
@@ -358,7 +379,7 @@ def str_func_git_describe(g: Git) -> str:
   return str_func_git_describe_long(g)
 
 
-def str_func_git_describe_long(g: Git) -> str:
+def str_func_git_describe_long(g: GitVer) -> str:
   """Format a Git as a string that matches the output of
   `git describe --tags --dirty --always --long`
 
