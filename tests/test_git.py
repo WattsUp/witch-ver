@@ -58,11 +58,6 @@ class TestGit(base.TestBase):
     finally:
       git.runner.run = original_run
 
-    # git-1 is an empty repo with no commits
-    path = self._DATA_ROOT.joinpath("git-1")
-    g = git.Git(path=path)
-    self.assertRaises(RuntimeError, g.fetch_git_info)
-
     # git-0 has a branch and is dirty
     path = self._DATA_ROOT.joinpath("git-0")
     g = git.Git(path=path)
@@ -73,8 +68,22 @@ class TestGit(base.TestBase):
     self.assertEqual(
         datetime.datetime.fromisoformat("2022-07-18T11:01:26-07:00"), g.date)
     self.assertTrue(g.is_dirty)
-    self.assertEqual(1, g.distance)
-    self.assertEqual("v0.0.0", g.tag)
+    self.assertEqual(0, g.distance)
+    self.assertEqual("v1.2.3-rc1", g.tag)
+
+    # git-1 is an empty repo with no commits
+    path = self._DATA_ROOT.joinpath("git-1")
+    g = git.Git(path=path)
+    g.fetch_git_info()
+    self.assertEqual("", g.sha)
+    self.assertEqual("", g.sha_abbrev)
+    self.assertEqual("master", g.branch)
+    now = datetime.datetime.now()
+    difference = abs((g.date - now).total_seconds())
+    self.assertLessEqual(difference, 60)
+    self.assertFalse(g.is_dirty)
+    self.assertEqual(0, g.distance)
+    self.assertEqual(None, g.tag)
 
     # git-2 has a branch but is detached
     path = self._DATA_ROOT.joinpath("git-2")
@@ -95,7 +104,7 @@ class TestGit(base.TestBase):
     # git-3 is detached from the master branch
     # Has a change in the index but reverted in the working tree
     path = self._DATA_ROOT.joinpath("git-3")
-    g = git.Git(path=path, version_prefix=None)
+    g = git.Git(path=path, tag_prefix=None)
     self.assertEqual("f70f3f504000d80d45922c213e3cc3dba9bc8e2c", g.sha)
     self.assertEqual("f70f3f5", g.sha_abbrev)
     self.assertEqual("master", g.branch)
@@ -121,7 +130,7 @@ class TestGit(base.TestBase):
     # git-5 is detached from the main branch
     # Has a change in the index but reverted in the working tree
     path = self._DATA_ROOT.joinpath("git-5")
-    g = git.Git(path=path, version_prefix=None)
+    g = git.Git(path=path, tag_prefix=None)
     self.assertEqual("f70f3f504000d80d45922c213e3cc3dba9bc8e2c", g.sha)
     self.assertEqual("f70f3f5", g.sha_abbrev)
     self.assertEqual("main", g.branch)
@@ -145,10 +154,10 @@ class TestGit(base.TestBase):
 
     self.assertRaises(ValueError, g.build_semver)
 
-    g._version_prefix = "ver"  # pylint: disable=protected-access
+    g._tag_prefix = "ver"  # pylint: disable=protected-access
 
     s = str(g.semver)
-    target = f"0.0.0-rc1.dirty.p0.g{sha}.g{sha_abbrev}.20220719T185017Z"
+    target = f"0.0.0-rc1.p0.dirty.g{sha}.g{sha_abbrev}.20220719T185017Z"
     self.assertEqual(target, s)
 
     g._dirty_in_pre = False  # pylint: disable=protected-access
@@ -159,7 +168,7 @@ class TestGit(base.TestBase):
 
     g.build_semver()
     s = str(g.semver)
-    target = f"0.0.0-rc1+dirty.p0.g{sha}.g{sha_abbrev}.20220719T185017Z"
+    target = f"0.0.0-rc1+p0.dirty.g{sha}.g{sha_abbrev}.20220719T185017Z"
     self.assertEqual(target, s)
 
     g._dirty_in_pre = None  # pylint: disable=protected-access
@@ -178,5 +187,95 @@ class TestGit(base.TestBase):
     path = self._DATA_ROOT.joinpath("git-3")
     g = git.Git(path=path)
     s = str(g.semver)
-    target = "0.0.0-no-tag.p2.gf70f3f5+20220718T190625Z"
+    target = "0.0.0-untagged.p2.gf70f3f5+20220718T190625Z"
+    self.assertEqual(target, s)
+
+  def test_str(self):
+    # git-0 has a branch and is dirty
+    path = self._DATA_ROOT.joinpath("git-0")
+    g = git.Git(path=path)
+    s = str(g)
+    target = "1.2.3-rc1.p0.dirty.gdd0ae6e+20220718T180126Z"
+    self.assertEqual(target, s)
+    s = str(g.semver)
+    self.assertEqual(target, s)
+
+    target = f"<witch_ver.git.Git '{s}'>"
+    self.assertEqual(target, repr(g))
+
+    g._custom_str_func = git.str_func_pep440  # pylint: disable=protected-access
+    s = str(g)
+    target = "v1.2.3-rc1+0.gdd0ae6e.dirty"
+    self.assertEqual(target, s)
+
+    g._custom_str_func = git.str_func_git_describe  # pylint: disable=protected-access
+    s = str(g)
+    target = "v1.2.3-rc1-dirty"
+    self.assertEqual(target, s)
+
+    g._custom_str_func = git.str_func_git_describe_long  # pylint: disable=protected-access
+    s = str(g)
+    target = "v1.2.3-rc1-0-gdd0ae6e-dirty"
+    self.assertEqual(target, s)
+
+    # Fake being not dirty
+    g._dirty = False  # pylint: disable=protected-access
+    g._custom_str_func = git.str_func_pep440  # pylint: disable=protected-access
+    s = str(g)
+    target = "v1.2.3-rc1"
+    self.assertEqual(target, s)
+
+    g._custom_str_func = git.str_func_git_describe  # pylint: disable=protected-access
+    s = str(g)
+    target = "v1.2.3-rc1"
+    self.assertEqual(target, s)
+
+    # git-1 is an empty repo with no commits
+    path = self._DATA_ROOT.joinpath("git-1")
+    g = git.Git(path=path, custom_str_func=git.str_func_pep440)
+    s = str(g)
+    target = "0+untagged"
+    self.assertEqual(target, s)
+
+    g._custom_str_func = git.str_func_git_describe  # pylint: disable=protected-access
+    s = str(g)
+    target = "v0.0.0-untagged-0-g"
+    self.assertEqual(target, s)
+
+    g._custom_str_func = git.str_func_git_describe_long  # pylint: disable=protected-access
+    g._tag_prefix = ""  # pylint: disable=protected-access
+    s = str(g)
+    target = "0.0.0-untagged-0-g"
+    self.assertEqual(target, s)
+
+    # git-4 has no branches but is detached
+    # Has a change in the index
+    path = self._DATA_ROOT.joinpath("git-4")
+    g = git.Git(path=path)
+    s = str(g)
+    target = "0.0.0-untagged.p2.dirty.gf70f3f5+20220718T190625Z"
+    self.assertEqual(target, s)
+    s = str(g.semver)
+    self.assertEqual(target, s)
+
+    g._custom_str_func = git.str_func_pep440  # pylint: disable=protected-access
+    s = str(g)
+    target = "0+untagged.2.gf70f3f5.dirty"
+    self.assertEqual(target, s)
+
+    g._custom_str_func = git.str_func_git_describe  # pylint: disable=protected-access
+    s = str(g)
+    target = "f70f3f5-dirty"
+    self.assertEqual(target, s)
+
+    g._custom_str_func = git.str_func_git_describe_long  # pylint: disable=protected-access
+    s = str(g)
+    target = "f70f3f5-dirty"
+    self.assertEqual(target, s)
+
+    # Fake being not dirty
+    g._dirty = False  # pylint: disable=protected-access
+    g._custom_str_func = git.str_func_pep440  # pylint: disable=protected-access
+    s = str(g)
+    target = "0+untagged.2.gf70f3f5"
     self.assertEqual(target, s)
