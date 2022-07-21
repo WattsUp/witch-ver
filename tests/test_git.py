@@ -60,9 +60,10 @@ class TestGit(base.TestBase):
     self.assertTrue(g.is_dirty)
     self.assertEqual(0, g.distance)
     self.assertEqual("v1.2.3-rc1", g.tag)
+    self.assertEqual(path.joinpath(".git").resolve(), g.git_dir)
 
     # git-1 is an empty repo with no commits
-    path = self._DATA_ROOT.joinpath("git-1")
+    path = self._DATA_ROOT.joinpath("git-1", "child")
     g = git.fetch(path=path)
     self.assertEqual("", g.sha)
     self.assertEqual("", g.sha_abbrev)
@@ -73,6 +74,7 @@ class TestGit(base.TestBase):
     self.assertFalse(g.is_dirty)
     self.assertEqual(0, g.distance)
     self.assertEqual(None, g.tag)
+    self.assertEqual(path.parent.joinpath(".git").resolve(), g.git_dir)
 
     # git-2 has a branch but is detached
     path = self._DATA_ROOT.joinpath("git-2")
@@ -145,12 +147,16 @@ class TestGit(base.TestBase):
         "date": datetime.datetime.now(),
         "dirty": False,
         "distance": random.randint(0, 100),
-        "pretty_str": f"v{major}.{minor}.{patch}-rc1"
+        "pretty_str": f"v{major}.{minor}.{patch}-rc1",
+        "git_dir": "something"
     }
     g = git.GitVer(**target)
-    d = g.asdict()
+    d = g.asdict(include_git_dir=True)
     self.assertDictEqual(target, d)
     self.assertEqual(g, git.GitVer(**d))
+
+    d = g.asdict(include_git_dir=False)
+    self.assertEqual(None, d["git_dir"])
 
     d["date"] = d["date"].isoformat()
     self.assertEqual(g, git.GitVer(**d))
