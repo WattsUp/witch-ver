@@ -8,6 +8,8 @@ Typical usage:
 
 import setuptools
 
+from witch_ver import version
+
 module_name = "witch-ver"
 module_folder = "witch_ver"
 
@@ -17,22 +19,9 @@ with open("README.md", encoding="utf-8") as file:
 required = ["colorama"]
 extras_require = {"test": ["AutoDict", "coverage", "pylint"]}
 
-try:
-  from tools import gitsemver
-  version = gitsemver.get_version()
-  with open(f"{module_folder}/version.py", "w", encoding="utf-8") as file:
-    file.write('"""Module version information\n"""\n\n')
-    file.write(f'version = "{version}"\n')
-    file.write(f'version_full = "{version.full_str()}"\n')
-    file.write(f'tag = "{version.raw}"\n')
-except ImportError:
-  import re
-  with open(f"{module_folder}/version.py", "r", encoding="utf-8") as file:
-    version = re.search(r'version = "(.*)"', file.read())[1]
-
 setuptools.setup(
     name=module_name,
-    version=str(version),
+    version=version.__version__,
     description="git tag based versioning",
     long_description=longDescription,
     long_description_content_type="text/markdown",
@@ -61,5 +50,4 @@ setuptools.setup(
     ],
     python_requires=">=3.7",
     include_package_data=True,
-    zip_safe=False,
-)
+    zip_safe=False)

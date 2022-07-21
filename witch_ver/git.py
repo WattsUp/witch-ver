@@ -52,6 +52,7 @@ class GitVer(SemVer):
     self._tag: str = kwargs.pop("tag", None)
     self._tag_prefix: str = tag_prefix
     self._pretty_str: str = kwargs.pop("pretty_str", None)
+    self._git_dir: str = kwargs.pop("git_dir", None)
 
     if isinstance(self._date, str):
       self._date = datetime.datetime.fromisoformat(self._date)
@@ -110,16 +111,19 @@ class GitVer(SemVer):
   def __repr__(self) -> str:
     return f"<witch_ver.git.GitVer '{self.semver}'>"
 
-  def asdict(self, isoformat_date: bool = False) -> dict:
+  def asdict(self,
+             isoformat_date: bool = False,
+             include_git_dir: bool = False) -> dict:
     """Convert GitVer to dictionary
 
     Args:
       isoformat_date: True will convert date to isoformat, False will leave it
         as datetime
+      include_git_dir: True will include the git_dir, False will include None
 
     Returns:
       Dictionary of tag, tag_prefix, sha, sha_abbrev, branch, date, dirty,
-        distance, and pretty_str (output of str(GitVer))
+        distance, pretty_str (output of str(GitVer)), and git_dir
     """
     return {
         "tag": self._tag,
@@ -130,8 +134,15 @@ class GitVer(SemVer):
         "date": self._date.isoformat() if isoformat_date else self._date,
         "dirty": self._dirty,
         "distance": self._distance,
-        "pretty_str": self._pretty_str
+        "pretty_str": self._pretty_str,
+        "git_dir": self._git_dir if include_git_dir else None
     }
+
+  @property
+  def git_dir(self) -> pathlib.Path:
+    """Location to the folder containing git repository (.git folder)
+    """
+    return self._git_dir
 
   @property
   def semver(self) -> str:
@@ -233,9 +244,13 @@ def fetch(path: Union[str, bytes, os.PathLike] = None,
       )  # pragma: no cover since all commands should fail gracefully
     return stdout, returncode
 
-  _, returncode = run(["rev-parse", "--git-dir"])
+  git_dir, returncode = run(["rev-parse", "--git-dir"])
   if returncode != 0:
     raise RuntimeError(f"Path is not inside a git repository '{path}'")
+  git_dir = pathlib.Path(git_dir)
+  if not git_dir.is_absolute():
+    git_dir = path.joinpath(git_dir)
+  git_dir = git_dir.resolve()
 
   default_branch, returncode = run(["config", "init.defaultBranch"])
   if returncode != 0:
@@ -251,6 +266,7 @@ def fetch(path: Union[str, bytes, os.PathLike] = None,
     kwargs["date"] = datetime.datetime.now()
     kwargs["distance"] = 0
     kwargs["tag"] = None
+    kwargs["git_dir"] = git_dir
 
     status, returncode = run_check(["status", "--porcelain"])
     kwargs["dirty"] = len(status) > 0
@@ -320,6 +336,7 @@ def fetch(path: Union[str, bytes, os.PathLike] = None,
   kwargs["date"] = date
   kwargs["distance"] = distance
   kwargs["tag"] = tag
+  kwargs["git_dir"] = git_dir
 
   status, returncode = run_check(["status", "--porcelain"])
   kwargs["dirty"] = dirty

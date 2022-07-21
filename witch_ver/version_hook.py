@@ -36,13 +36,17 @@ def _get_version() -> dict:
         items.append(f'    "{k}": {v}')
     new_file += ",\n".join(items)
     new_file += "\n}"
-    with open(__file__, "r+", encoding="utf-8") as file:
+    with open(__file__, "r", encoding="utf-8") as file:
       buf = file.read()
-      buf = re.sub(r"version_dict = {.*?}", new_file, buf, count=1, flags=re.S)
+      orig = re.search(r"version_dict = {.*?}", buf, flags=re.S)
+      if orig[0] == new_file:
+        return version_dict
+      # Modifications will occur, write (avoids over touching for systems that
+      # care about modification date)
+      buf = buf[:orig.start()] + new_file + buf[orig.end():]
 
-      file.seek(0)
+    with open(__file__, "w", encoding="utf-8") as file:
       file.write(buf)
-      file.truncate()
     return _semver
   except RuntimeError:
     return version_dict
