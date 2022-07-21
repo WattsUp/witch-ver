@@ -247,6 +247,11 @@ def fetch(path: Union[str, bytes, os.PathLike] = None,
       )  # pragma: no cover since all commands should fail gracefully
     return stdout, returncode
 
+  def default_branch() -> str:
+    out, returncode = run(["config", "init.defaultBranch"])
+    # This key was added in 2.28. The default prior was master
+    return out if returncode == 0 else "master"
+
   git_dir, returncode = run(["rev-parse", "--git-dir"])
   if returncode != 0:
     raise RuntimeError(f"Path is not inside a git repository '{path}'")
@@ -255,17 +260,12 @@ def fetch(path: Union[str, bytes, os.PathLike] = None,
     git_dir = path.joinpath(git_dir)
   git_dir = git_dir.resolve()
 
-  default_branch, returncode = run(["config", "init.defaultBranch"])
-  if returncode != 0:
-    # This key was added in 2.28. The default prior was master
-    default_branch = "master"  # pragma: no cover
-
   sha, returncode = run(["rev-parse", "HEAD"])
   if returncode != 0:
     # Likely HEAD doesn't point to anything aka no commits
     kwargs["sha"] = ""
     kwargs["sha_abbrev"] = ""
-    kwargs["branch"] = default_branch
+    kwargs["branch"] = default_branch()
     kwargs["date"] = datetime.datetime.now()
     kwargs["distance"] = 0
     kwargs["tag"] = None
@@ -312,7 +312,7 @@ def fetch(path: Union[str, bytes, os.PathLike] = None,
       branches.pop(0)  # pragma: no cover since this is 15 years old
 
     branch = None
-    default_branches = [default_branch, "master", "main"]
+    default_branches = [default_branch(), "master", "main"]
     for b in default_branches:
       if b in branches:
         branch = b

@@ -23,7 +23,7 @@ def _get_version() -> dict:
   try:
     import re  # pylint: disable=import-outside-toplevel
     # TODO (WattsUp) read options and configure
-    g = git.fetch(custom_str_func=git.str_func_pep440)
+    g = git.fetch(custom_str_func=git.str_func_pep440, cache=version_dict)
     _semver = g.asdict(isoformat_date=True)
 
     # Overwrite this file with new version info
