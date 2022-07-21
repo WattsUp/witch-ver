@@ -61,8 +61,8 @@ class GitVer(SemVer):
       super().__init__(major=0, minor=0, patch=0, prerelease="untagged")
     else:
       tag = self._tag
-      if self._tag_prefix is not None:
-        tag = tag.removeprefix(self._tag_prefix)
+      if self._tag_prefix is not None and tag.startswith(self._tag_prefix):
+        tag = tag[len(self._tag_prefix):]
       super().__init__(tag)
 
     if len(kwargs) > 0:
@@ -209,6 +209,7 @@ def fetch(path: Union[str, bytes, os.PathLike] = None,
           tag_prefix: str = "v",
           describe_args: List[str] = None,
           custom_str_func: Callable = None,
+          cache: dict = None,
           **kwargs) -> GitVer:
   """Run git commands to fetch current repository status
 
@@ -219,6 +220,8 @@ def fetch(path: Union[str, bytes, os.PathLike] = None,
       --tags --always --long --match {tag_prefix}*
     custom_str_func: Custom format function for str(Git) which takes a single
       argument self. None will use str(SemVer) and tags included as follows.
+    cache: Cached dict version of a GitVer, if SHAs are identical, only update
+      dirtiness, else fetch all
     kwargs: Other arguments passed to GitVer.__init__
 
   Raises:
@@ -272,6 +275,29 @@ def fetch(path: Union[str, bytes, os.PathLike] = None,
     kwargs["dirty"] = len(status) > 0
     return GitVer(tag_prefix=tag_prefix, pretty_str=custom_str_func, **kwargs)
 
+  dirty = False
+  _, returncode = run(["diff", "--quiet", "HEAD"])
+  if returncode == 0:
+    # No difference between HEAD and working tree
+    # Check for any untracked and unignored files
+    status, returncode = run_check(["status", "--porcelain"])
+    changes = status.splitlines()
+    for c in changes:
+      if c[0] == "?":
+        dirty = True
+        break
+  else:
+    dirty = True
+
+  if cache is not None:
+    required = ["sha", "sha_abbrev", "branch", "date", "distance", "tag"]
+    if all(r in cache for r in required) and sha == cache["sha"]:
+      for r in required:
+        kwargs[r] = cache[r]
+      kwargs["git_dir"] = git_dir
+      kwargs["dirty"] = dirty
+      return GitVer(tag_prefix=tag_prefix, pretty_str=custom_str_func, **kwargs)
+
   describe, returncode = run_check(["describe"] + describe_args)
 
   branch, returncode = run_check(["rev-parse", "--abbrev-ref", "HEAD"])
@@ -299,20 +325,6 @@ def fetch(path: Union[str, bytes, os.PathLike] = None,
 
   raw, returncode = run_check(["show", "-s", "--format=%ci", "HEAD"])
   date = datetime.datetime.strptime(raw, "%Y-%m-%d %H:%M:%S %z")
-
-  dirty = False
-  _, returncode = run(["diff", "--quiet", "HEAD"])
-  if returncode == 0:
-    # No difference between HEAD and working tree
-    # Check for any untracked and unignored files
-    status, returncode = run_check(["status", "--porcelain"])
-    changes = status.splitlines()
-    for c in changes:
-      if c[0] == "?":
-        dirty = True
-        break
-  else:
-    dirty = True
 
   if "-" in describe:
     m = REGEX.match(describe)
@@ -366,8 +378,8 @@ def str_func_pep440(g: GitVer) -> str:
   buf = g.tag
   if buf is None:
     buf = "0+untagged"
-  else:
-    buf = buf.removeprefix(g.tag_prefix)
+  elif buf.startswith(g.tag_prefix):
+    buf = buf[len(g.tag_prefix):]
 
   if g.distance == 0 and not g.is_dirty:
     return buf

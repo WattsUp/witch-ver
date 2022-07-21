@@ -3,6 +3,7 @@
 
 import datetime
 import random
+import time
 import zipfile
 
 from witch_ver import git
@@ -123,7 +124,37 @@ class TestGit(base.TestBase):
     # git-5 is detached from the main branch
     # Has a change in the index but reverted in the working tree
     path = self._DATA_ROOT.joinpath("git-5")
+    start = time.perf_counter()
     g = git.fetch(path=path, tag_prefix=None)
+    elapsed_slow = time.perf_counter() - start
+    self.assertEqual("f70f3f504000d80d45922c213e3cc3dba9bc8e2c", g.sha)
+    self.assertEqual("f70f3f5", g.sha_abbrev)
+    self.assertEqual("main", g.branch)
+    self.assertEqual(
+        datetime.datetime.fromisoformat("2022-07-18T12:06:25-07:00"), g.date)
+    self.assertFalse(g.is_dirty)
+    self.assertEqual(1, g.distance)
+    self.assertEqual("0.0.0", g.tag)
+
+    d = g.asdict()
+    start = time.perf_counter()
+    g = git.fetch(path=path, tag_prefix=None, cache=d)
+    elapsed_cached = time.perf_counter() - start
+    self.assertEqual("f70f3f504000d80d45922c213e3cc3dba9bc8e2c", g.sha)
+    self.assertEqual("f70f3f5", g.sha_abbrev)
+    self.assertEqual("main", g.branch)
+    self.assertEqual(
+        datetime.datetime.fromisoformat("2022-07-18T12:06:25-07:00"), g.date)
+    self.assertFalse(g.is_dirty)
+    self.assertEqual(1, g.distance)
+    self.assertEqual("0.0.0", g.tag)
+
+    self.log_speed(elapsed_slow, elapsed_cached)
+    self.assertGreater(elapsed_slow, elapsed_cached)
+
+    # This won't use the partial cache
+    d.pop("branch")
+    g = git.fetch(path=path, tag_prefix=None, cache=d)
     self.assertEqual("f70f3f504000d80d45922c213e3cc3dba9bc8e2c", g.sha)
     self.assertEqual("f70f3f5", g.sha_abbrev)
     self.assertEqual("main", g.branch)
@@ -241,6 +272,13 @@ class TestGit(base.TestBase):
     d["pretty_str"] = git.str_func_git_describe
     s = str(git.GitVer(**d))
     target = "v1.2.3-rc1"
+    self.assertEqual(target, s)
+
+    # Remove tag_prefix from tag
+    d["tag"] = d["tag"][1:]
+    d["pretty_str"] = git.str_func_pep440
+    s = str(git.GitVer(**d))
+    target = "1.2.3-rc1"
     self.assertEqual(target, s)
 
     # git-1 is an empty repo with no commits
