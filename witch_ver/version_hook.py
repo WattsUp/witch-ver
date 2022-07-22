@@ -54,5 +54,9 @@ def _get_version() -> dict:
 
 if _semver is None:
   _semver = version_dict = _get_version()
+else:
+  # Subsequent imports should use the already loaded/cached module in
+  # sys.modules
+  pass  # pragma: no cover
 
-__version__ = version_dict["pretty_str"]
+__version__ = version_dict.get("pretty_str")
