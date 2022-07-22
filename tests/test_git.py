@@ -78,7 +78,7 @@ class TestGit(base.TestBase):
     self.assertEqual(path.parent.joinpath(".git").resolve(), g.git_dir)
 
     # git-2 has a branch but is detached
-    path = self._DATA_ROOT.joinpath("git-2")
+    path = self._DATA_ROOT.joinpath("git-2", ".gitignore")
     g = git.fetch(path=path)
     self.assertEqual("b23ba426ab23f9bf525691e7550fc57afee48dd8", g.sha)
     self.assertEqual("b23ba42", g.sha_abbrev)

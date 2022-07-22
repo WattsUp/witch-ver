@@ -214,7 +214,7 @@ def fetch(path: Union[str, bytes, os.PathLike] = None,
   """Run git commands to fetch current repository status
 
   Args:
-    path: Path to .git folder (given to git -C <path>), None will use cwd()
+    path: Path to repository folder (to run commands from), None will use cwd()
     tag_prefix: Prefix for git tags describing version (to filter)
     describe_args: Arguments used for git describe, None will use default:
       --tags --always --long --match {tag_prefix}*
@@ -231,6 +231,8 @@ def fetch(path: Union[str, bytes, os.PathLike] = None,
   if path is None:
     path = "."
   path = pathlib.Path(path).resolve()
+  if path.is_file():
+    path = path.parent
 
   if describe_args is None:
     describe_args = ["--tags", "--always", "--long"]
