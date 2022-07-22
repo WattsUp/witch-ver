@@ -6,12 +6,20 @@ Typical usage:
   python setup.py test
 """
 
+import shutil
+import pathlib
 import setuptools
 
-from witch_ver import version
+module_folder = pathlib.Path("witch_ver")
+
+try:
+  from witch_ver import version
+except ImportError:
+  shutil.copyfile(module_folder.joinpath("version_hook.py"),
+                  module_folder.joinpath("version.py"))
+  from witch_ver import version
 
 module_name = "witch-ver"
-module_folder = "witch_ver"
 
 with open("README.md", encoding="utf-8") as file:
   longDescription = file.read()
@@ -27,7 +35,7 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     license="MIT",
     packages=setuptools.find_packages(exclude=["tests", "tests.*"]),
-    package_data={module_folder: []},
+    package_data={str(module_folder): []},
     install_requires=required,
     extras_require=extras_require,
     test_suite="tests",
