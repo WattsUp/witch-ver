@@ -10,7 +10,7 @@ build
 .eggs
 dist
 *.c
-version.py
+_version.py
 
 # Test artifacts
 .test

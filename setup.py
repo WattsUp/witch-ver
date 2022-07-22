@@ -6,19 +6,11 @@ Typical usage:
   python setup.py test
 """
 
-import shutil
-import pathlib
 import setuptools
 
-module_folder = pathlib.Path("witch_ver")
+from witch_ver import __version__
 
-try:
-  from witch_ver import version
-except ImportError:
-  shutil.copyfile(module_folder.joinpath("version_hook.py"),
-                  module_folder.joinpath("version.py"))
-  from witch_ver import version
-
+module_folder = "witch_ver"
 module_name = "witch-ver"
 
 with open("README.md", encoding="utf-8") as file:
@@ -29,7 +21,7 @@ extras_require = {"test": ["AutoDict", "coverage", "pylint"]}
 
 setuptools.setup(
     name=module_name,
-    version=version.__version__,
+    version=__version__,
     description="git tag based versioning",
     long_description=longDescription,
     long_description_content_type="text/markdown",

@@ -3,8 +3,6 @@
 command_line = tests discover -s tests -t . --locals
 branch = True
 source = witch_ver
-omit =
-  witch_ver/version.py
 
 [report]
 exclude_lines =

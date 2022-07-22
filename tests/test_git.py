@@ -75,7 +75,7 @@ class TestGit(base.TestBase):
     self.assertFalse(g.is_dirty)
     self.assertEqual(0, g.distance)
     self.assertEqual(None, g.tag)
-    self.assertEqual(path.parent.joinpath(".git").resolve(), g.git_dir)
+    self.assertEqual(path.with_name(".git").resolve(), g.git_dir)
 
     # git-2 has a branch but is detached
     path = self._DATA_ROOT.joinpath("git-2", ".gitignore")

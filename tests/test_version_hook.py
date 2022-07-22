@@ -19,7 +19,7 @@ class TestVersionHook(base.TestBase):
     v = witch_ver.version_dict
 
     # Setup mock IO for the file
-    path = pathlib.Path(witch_ver.__file__).parent.joinpath("version_hook.py")
+    path = pathlib.Path(witch_ver.__file__).with_name("version_hook.py")
     with open(path, "r", encoding="utf-8") as file:
       orig_file = file.read()
 
@@ -42,6 +42,7 @@ class TestVersionHook(base.TestBase):
                          count=1,
                          flags=re.S)
 
+    # Mock an overwrite
     mock_open: mock.MagicMock = mock.mock_open(read_data=orig_file)
     with mock.patch("builtins.open", mock_open):
       from witch_ver import version_hook  # pylint: disable=import-outside-toplevel
@@ -54,7 +55,7 @@ class TestVersionHook(base.TestBase):
       handle_w: mock.MagicMock = mock_open().write
       handle_w.assert_called_once_with(target_file)
 
-    # Open with no changes needed
+    # Mock no changes needed
     mock_open: mock.MagicMock = mock.mock_open(read_data=target_file)
     with mock.patch("builtins.open", mock_open):
       result = version_hook._get_version()  # pylint: disable=protected-access
@@ -66,6 +67,7 @@ class TestVersionHook(base.TestBase):
       handle_w: mock.MagicMock = mock_open().write
       handle_w.assert_not_called()
 
+    # Mock not in a git repository
     mock_open: mock.MagicMock = mock.mock_open(read_data=target_file)
     with mock.patch("builtins.open", mock_open):
 
