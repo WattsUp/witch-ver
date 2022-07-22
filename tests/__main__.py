@@ -1,18 +1,20 @@
 """Test main
 """
 
-import os
 import unittest
 
 import autodict
+
+import witch_ver
 
 from tests import TEST_LOG
 
 
 def pre_tests():
   if TEST_LOG.exists():
-    os.remove(TEST_LOG)
+    TEST_LOG.unlink()
   with autodict.JSONAutoDict(TEST_LOG) as d:
+    d["version"] = witch_ver.version_dict
     d["classes"] = {}
     d["methods"] = {}
 
