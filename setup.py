@@ -8,8 +8,10 @@ Typical usage:
 
 import setuptools
 
-module_name = "witch-ver"
+from witch_ver import __version__
+
 module_folder = "witch_ver"
+module_name = "witch-ver"
 
 with open("README.md", encoding="utf-8") as file:
   longDescription = file.read()
@@ -17,28 +19,15 @@ with open("README.md", encoding="utf-8") as file:
 required = ["colorama"]
 extras_require = {"test": ["AutoDict", "coverage", "pylint"]}
 
-try:
-  from tools import gitsemver
-  version = gitsemver.get_version()
-  with open(f"{module_folder}/version.py", "w", encoding="utf-8") as file:
-    file.write('"""Module version information\n"""\n\n')
-    file.write(f'version = "{version}"\n')
-    file.write(f'version_full = "{version.full_str()}"\n')
-    file.write(f'tag = "{version.raw}"\n')
-except ImportError:
-  import re
-  with open(f"{module_folder}/version.py", "r", encoding="utf-8") as file:
-    version = re.search(r'version = "(.*)"', file.read())[1]
-
 setuptools.setup(
     name=module_name,
-    version=str(version),
+    version=__version__,
     description="git tag based versioning",
     long_description=longDescription,
     long_description_content_type="text/markdown",
     license="MIT",
-    packages=setuptools.find_packages(),
-    package_data={module_folder: []},
+    packages=setuptools.find_packages(exclude=["tests", "tests.*"]),
+    package_data={str(module_folder): []},
     install_requires=required,
     extras_require=extras_require,
     test_suite="tests",
@@ -61,5 +50,4 @@ setuptools.setup(
     ],
     python_requires=">=3.7",
     include_package_data=True,
-    zip_safe=False,
-)
+    zip_safe=False)

@@ -16,7 +16,7 @@ class TestBase(unittest.TestCase):
   """
 
   _TEST_ROOT = pathlib.Path(".test")
-  _DATA_ROOT = pathlib.Path(__file__).parent.joinpath("data")
+  _DATA_ROOT = pathlib.Path(__file__).with_name("data")
 
   def __clean_test_root(self):
     if self._TEST_ROOT.exists():

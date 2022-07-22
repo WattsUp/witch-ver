@@ -52,6 +52,7 @@ class GitVer(SemVer):
     self._tag: str = kwargs.pop("tag", None)
     self._tag_prefix: str = tag_prefix
     self._pretty_str: str = kwargs.pop("pretty_str", None)
+    self._git_dir: str = kwargs.pop("git_dir", None)
 
     if isinstance(self._date, str):
       self._date = datetime.datetime.fromisoformat(self._date)
@@ -60,8 +61,8 @@ class GitVer(SemVer):
       super().__init__(major=0, minor=0, patch=0, prerelease="untagged")
     else:
       tag = self._tag
-      if self._tag_prefix is not None:
-        tag = tag.removeprefix(self._tag_prefix)
+      if self._tag_prefix is not None and tag.startswith(self._tag_prefix):
+        tag = tag[len(self._tag_prefix):]
       super().__init__(tag)
 
     if len(kwargs) > 0:
@@ -110,16 +111,19 @@ class GitVer(SemVer):
   def __repr__(self) -> str:
     return f"<witch_ver.git.GitVer '{self.semver}'>"
 
-  def asdict(self, isoformat_date: bool = False) -> dict:
+  def asdict(self,
+             isoformat_date: bool = False,
+             include_git_dir: bool = False) -> dict:
     """Convert GitVer to dictionary
 
     Args:
       isoformat_date: True will convert date to isoformat, False will leave it
         as datetime
+      include_git_dir: True will include the git_dir, False will include None
 
     Returns:
       Dictionary of tag, tag_prefix, sha, sha_abbrev, branch, date, dirty,
-        distance, and pretty_str (output of str(GitVer))
+        distance, pretty_str (output of str(GitVer)), and git_dir
     """
     return {
         "tag": self._tag,
@@ -130,8 +134,15 @@ class GitVer(SemVer):
         "date": self._date.isoformat() if isoformat_date else self._date,
         "dirty": self._dirty,
         "distance": self._distance,
-        "pretty_str": self._pretty_str
+        "pretty_str": self._pretty_str,
+        "git_dir": self._git_dir if include_git_dir else None
     }
+
+  @property
+  def git_dir(self) -> pathlib.Path:
+    """Location to the folder containing git repository (.git folder)
+    """
+    return self._git_dir
 
   @property
   def semver(self) -> str:
@@ -198,16 +209,19 @@ def fetch(path: Union[str, bytes, os.PathLike] = None,
           tag_prefix: str = "v",
           describe_args: List[str] = None,
           custom_str_func: Callable = None,
+          cache: dict = None,
           **kwargs) -> GitVer:
   """Run git commands to fetch current repository status
 
   Args:
-    path: Path to .git folder (given to git -C <path>), None will use cwd()
+    path: Path to repository folder (to run commands from), None will use cwd()
     tag_prefix: Prefix for git tags describing version (to filter)
     describe_args: Arguments used for git describe, None will use default:
       --tags --always --long --match {tag_prefix}*
     custom_str_func: Custom format function for str(Git) which takes a single
       argument self. None will use str(SemVer) and tags included as follows.
+    cache: Cached dict version of a GitVer, if SHAs are identical, only update
+      dirtiness, else fetch all
     kwargs: Other arguments passed to GitVer.__init__
 
   Raises:
@@ -217,6 +231,8 @@ def fetch(path: Union[str, bytes, os.PathLike] = None,
   if path is None:
     path = "."
   path = pathlib.Path(path).resolve()
+  if path.is_file():
+    path = path.parent
 
   if describe_args is None:
     describe_args = ["--tags", "--always", "--long"]
@@ -233,28 +249,56 @@ def fetch(path: Union[str, bytes, os.PathLike] = None,
       )  # pragma: no cover since all commands should fail gracefully
     return stdout, returncode
 
-  _, returncode = run(["rev-parse", "--git-dir"])
+  def default_branch() -> str:
+    out, returncode = run(["config", "init.defaultBranch"])
+    # This key was added in 2.28. The default prior was master
+    return out if returncode == 0 else "master"
+
+  git_dir, returncode = run(["rev-parse", "--git-dir"])
   if returncode != 0:
     raise RuntimeError(f"Path is not inside a git repository '{path}'")
-
-  default_branch, returncode = run(["config", "init.defaultBranch"])
-  if returncode != 0:
-    # This key was added in 2.28. The default prior was master
-    default_branch = "master"  # pragma: no cover
+  git_dir = pathlib.Path(git_dir)
+  if not git_dir.is_absolute():
+    git_dir = path.joinpath(git_dir)
+  git_dir = git_dir.resolve()
 
   sha, returncode = run(["rev-parse", "HEAD"])
   if returncode != 0:
     # Likely HEAD doesn't point to anything aka no commits
     kwargs["sha"] = ""
     kwargs["sha_abbrev"] = ""
-    kwargs["branch"] = default_branch
+    kwargs["branch"] = default_branch()
     kwargs["date"] = datetime.datetime.now()
     kwargs["distance"] = 0
     kwargs["tag"] = None
+    kwargs["git_dir"] = git_dir
 
     status, returncode = run_check(["status", "--porcelain"])
     kwargs["dirty"] = len(status) > 0
     return GitVer(tag_prefix=tag_prefix, pretty_str=custom_str_func, **kwargs)
+
+  dirty = False
+  _, returncode = run(["diff", "--quiet", "HEAD"])
+  if returncode == 0:
+    # No difference between HEAD and working tree
+    # Check for any untracked and unignored files
+    status, returncode = run_check(["status", "--porcelain"])
+    changes = status.splitlines()
+    for c in changes:
+      if c[0] == "?":
+        dirty = True
+        break
+  else:
+    dirty = True
+
+  if cache is not None:
+    required = ["sha", "sha_abbrev", "branch", "date", "distance", "tag"]
+    if all(r in cache for r in required) and sha == cache["sha"]:
+      for r in required:
+        kwargs[r] = cache[r]
+      kwargs["git_dir"] = git_dir
+      kwargs["dirty"] = dirty
+      return GitVer(tag_prefix=tag_prefix, pretty_str=custom_str_func, **kwargs)
 
   describe, returncode = run_check(["describe"] + describe_args)
 
@@ -270,7 +314,7 @@ def fetch(path: Union[str, bytes, os.PathLike] = None,
       branches.pop(0)  # pragma: no cover since this is 15 years old
 
     branch = None
-    default_branches = [default_branch, "master", "main"]
+    default_branches = [default_branch(), "master", "main"]
     for b in default_branches:
       if b in branches:
         branch = b
@@ -283,20 +327,6 @@ def fetch(path: Union[str, bytes, os.PathLike] = None,
 
   raw, returncode = run_check(["show", "-s", "--format=%ci", "HEAD"])
   date = datetime.datetime.strptime(raw, "%Y-%m-%d %H:%M:%S %z")
-
-  dirty = False
-  _, returncode = run(["diff", "--quiet", "HEAD"])
-  if returncode == 0:
-    # No difference between HEAD and working tree
-    # Check for any untracked and unignored files
-    status, returncode = run_check(["status", "--porcelain"])
-    changes = status.splitlines()
-    for c in changes:
-      if c[0] == "?":
-        dirty = True
-        break
-  else:
-    dirty = True
 
   if "-" in describe:
     m = REGEX.match(describe)
@@ -320,6 +350,7 @@ def fetch(path: Union[str, bytes, os.PathLike] = None,
   kwargs["date"] = date
   kwargs["distance"] = distance
   kwargs["tag"] = tag
+  kwargs["git_dir"] = git_dir
 
   status, returncode = run_check(["status", "--porcelain"])
   kwargs["dirty"] = dirty
@@ -349,8 +380,8 @@ def str_func_pep440(g: GitVer) -> str:
   buf = g.tag
   if buf is None:
     buf = "0+untagged"
-  else:
-    buf = buf.removeprefix(g.tag_prefix)
+  elif buf.startswith(g.tag_prefix):
+    buf = buf[len(g.tag_prefix):]
 
   if g.distance == 0 and not g.is_dirty:
     return buf
