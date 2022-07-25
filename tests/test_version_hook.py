@@ -25,7 +25,7 @@ class TestVersionHook(base.TestBase):
 
     target_v = textwrap.dedent(f"""\
     version_dict = {{
-        "tag": "{v["tag"]}",
+        "tag": {"None"  if v["tag"]  is None else f'"{v["tag"]}"'},
         "tag_prefix": "{v["tag_prefix"]}",
         "sha": "{v["sha"]}",
         "sha_abbrev": "{v["sha_abbrev"]}",
