@@ -25,11 +25,11 @@ class TestVersionHook(base.TestBase):
 
     target_v = textwrap.dedent(f"""\
     version_dict = {{
-        "tag": "{v["tag"]}",
+        "tag": {"None"  if v["tag"]  is None else f'"{v["tag"]}"'},
         "tag_prefix": "{v["tag_prefix"]}",
         "sha": "{v["sha"]}",
         "sha_abbrev": "{v["sha_abbrev"]}",
-        "branch": "{v["branch"]}",
+        "branch": {"None"  if v["branch"]  is None else f'"{v["branch"]}"'},
         "date": "{v["date"]}",
         "dirty": {v["dirty"]},
         "distance": {v["distance"]},
