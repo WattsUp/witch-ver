@@ -53,6 +53,7 @@ jobs:
             testing.log
             test_log.json
             coverage.json
+            .coverage
       - name: Create badge
         uses: schneegans/dynamic-badges-action@v1.0.0
         with:

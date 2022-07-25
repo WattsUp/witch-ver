@@ -34,9 +34,12 @@ def _get_version() -> dict:
     Git object
   """
   global _semver
+  if _semver is not None:
+    return _semver
   try:
     from witch_ver import git  # pylint: disable=import-outside-toplevel
   except ImportError:
+    _semver = version_dict
     return version_dict
 
   try:
@@ -66,14 +69,10 @@ def _get_version() -> dict:
       file.write(new_file)
     return _semver
   except RuntimeError:
+    _semver = version_dict
     return version_dict
 
 
-if _semver is None:
-  _semver = version_dict = _get_version()
-else:
-  # Subsequent imports should use the already loaded/cached module in
-  # sys.modules
-  pass  # pragma: no cover
+version_dict = _get_version()
 
 __version__ = version_dict.get("pretty_str")
