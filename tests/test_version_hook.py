@@ -55,9 +55,15 @@ class TestVersionHook(base.TestBase):
       handle_w: mock.MagicMock = mock_open().write
       handle_w.assert_called_once_with(target_file)
 
+      # Call again but shouldn't run again since _semver is not None
+      result = version_hook._get_version()  # pylint: disable=protected-access
+      handle_r.assert_called_once()
+      handle_w.assert_called_once()
+
     # Mock no changes needed
     mock_open: mock.MagicMock = mock.mock_open(read_data=target_file)
     with mock.patch("builtins.open", mock_open):
+      version_hook._semver = None  # pylint: disable=protected-access
       result = version_hook._get_version()  # pylint: disable=protected-access
       self.assertDictEqual(v, result)
 
@@ -70,6 +76,7 @@ class TestVersionHook(base.TestBase):
     # Mock not in a git repository
     mock_open: mock.MagicMock = mock.mock_open(read_data=target_file)
     with mock.patch("builtins.open", mock_open):
+      version_hook._semver = None  # pylint: disable=protected-access
 
       def mock_fetch(*args, **kwargs):
         raise RuntimeError
