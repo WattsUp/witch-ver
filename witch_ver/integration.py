@@ -1,6 +1,7 @@
 """Integration into various automated tools
 """
 
+import ast
 import inspect
 import pathlib
 import re
@@ -41,7 +42,29 @@ def use_witch_ver(
     raise TypeError("custom_str_func is not callable nor a member of "
                     "witch_ver.git")
 
-  g = git.fetch(**config)
+  packages = []
+  for v in dist.packages:
+    v: str
+    v = v.split(".", maxsplit=1)[0]
+    if v not in packages:
+      packages.append(v)
+
+  # Catch not being in a git repo anymore and return first cached version from
+  # version.py
+  root = pathlib.Path(".").resolve()
+  try:
+    g = git.fetch(**config)
+  except RuntimeError as e:
+    dst = root.joinpath(packages[0], "version.py")
+    if dst.exists():
+      with open(dst, "r", encoding="utf-8") as file:
+        buf = file.read()
+        buf = re.search(r"version_dict = ({.*?})", buf, flags=re.S)[1]
+        cache = ast.literal_eval(buf)
+        g = git.GitVer(**config, **cache)
+    else:
+      raise RuntimeError("Unable to fetch version from git nor cache") from e
+
   src = pathlib.Path(__file__).with_name("version_hook.py").resolve()
   with open(src, "r", encoding="utf-8") as file:
     buf = file.read()
@@ -77,13 +100,33 @@ def use_witch_ver(
   config_str += ",\n".join(items)
   config_str += "\n}"
   config_str = textwrap.indent(config_str, "    ")
-  buf = re.sub(r" *config = {.*?}", config_str, buf, count=1, flags=re.S)
+  version_py = re.sub(r" *config = {.*?}", config_str, buf, count=1, flags=re.S)
 
-  root = pathlib.Path(".").resolve()
-  for v in dist.packages:
-    # TODO (WattsUp) Add installation into __init__ for
-    # from version import __version__
+  for v in packages:
+    # Copy version_hook
     dst = root.joinpath(v, "version.py")
+    with open(dst, "w", encoding="utf-8") as file:
+      file.write(version_py)
+
+    # Install import directive to __init__
+    dst = root.joinpath(v, "__init__.py")
+    with open(dst, "r", encoding="utf-8") as file:
+      buf = file.read()
+
+    import_str = f"from {v}.version import __version__\n"
+    if import_str in buf:
+      continue
+
+    # Find the first import of the module (EOF if not present)
+    # and append import_str
+    header = re.search(
+        fr'^"""(?:.|\n)*?"""(?:(?!(?:from {v}|import {v})).*\n|\n)*', buf)
+    if header is None:
+      buf = buf + "\n" + import_str + "\n"
+    else:
+      header: re.Match
+      buf = buf[:header.end()] + import_str + "\n" + buf[header.end():]
+
     with open(dst, "w", encoding="utf-8") as file:
       file.write(buf)
 
