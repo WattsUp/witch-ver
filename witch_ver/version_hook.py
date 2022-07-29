@@ -18,15 +18,21 @@ def _get_version() -> dict:
   if _semver is not None:
     return _semver
   try:
-    from witch_ver import git  # pylint: disable=import-outside-toplevel
+    import witch_ver  # pylint: disable=import-outside-toplevel
   except ImportError:
     _semver = version_dict
     return version_dict
 
   try:
     import re  # pylint: disable=import-outside-toplevel
-    # TODO (WattsUp) read options and configure
-    g = git.fetch(custom_str_func=git.str_func_pep440, cache=version_dict)
+
+    # yapf: disable since witch_ver overwrites without rerunning formatter
+    config = {
+        "custom_str_func": witch_ver.str_func_pep440
+    }
+    # yapf: enable
+
+    g = witch_ver.fetch(**config, cache=version_dict)
     _semver = g.asdict(isoformat_date=True)
 
     # Overwrite this file with new version info

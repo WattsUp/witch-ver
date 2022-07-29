@@ -81,7 +81,7 @@ class TestVersionHook(base.TestBase):
       def mock_fetch(*args, **kwargs):
         raise RuntimeError
 
-      with mock.patch("witch_ver.git.fetch", mock_fetch):
+      with mock.patch("witch_ver.fetch", mock_fetch):
         result = version_hook._get_version()  # pylint: disable=protected-access
 
       handle_r: mock.MagicMock = mock_open().read

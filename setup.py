@@ -50,4 +50,9 @@ setuptools.setup(
     ],
     python_requires=">=3.7",
     include_package_data=True,
-    zip_safe=False)
+    zip_safe=False,
+    entry_points={
+        "distutils.setup_keywords": [
+            "use_witch_ver = witch_ver.integration:use_witch_ver"
+        ]
+    })
