@@ -122,7 +122,7 @@ def use_witch_ver(
     header = re.search(
         fr'^"""(?:.|\n)*?"""(?:(?!(?:from {v}|import {v})).*\n|\n)*', buf)
     if header is None:
-      buf = buf + "\n" + import_str + "\n"
+      buf = buf + "\n" + import_str
     else:
       header: re.Match
       buf = buf[:header.end()] + import_str + "\n" + buf[header.end():]

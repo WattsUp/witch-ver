@@ -26,7 +26,11 @@ def _get_version() -> dict:
   try:
     import re  # pylint: disable=import-outside-toplevel
 
-    config = {"custom_str_func": witch_ver.str_func_pep440}
+    # yapf: disable since witch_ver overwrites without rerunning formatter
+    config = {
+        "custom_str_func": witch_ver.str_func_pep440
+    }
+    # yapf: enable
 
     g = witch_ver.fetch(**config, cache=version_dict)
     _semver = g.asdict(isoformat_date=True)
