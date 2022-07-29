@@ -61,7 +61,7 @@ def use_witch_ver(
         buf = file.read()
         buf = re.search(r"version_dict = ({.*?})", buf, flags=re.S)[1]
         cache = ast.literal_eval(buf)
-        g = git.GitVer(**config, **cache)
+        g = git.GitVer(**cache)
     else:
       raise RuntimeError("Unable to fetch version from git nor cache") from e
 
