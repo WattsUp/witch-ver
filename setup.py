@@ -18,6 +18,7 @@ with open("README.md", encoding="utf-8") as file:
 
 required = ["colorama"]
 extras_require = {"test": ["AutoDict", "coverage", "pylint"]}
+extras_require["dev"] = extras_require["test"] + ["toml", "yapf>=0.40.0"]
 
 setuptools.setup(
     name=module_name,
@@ -26,8 +27,9 @@ setuptools.setup(
     long_description=longDescription,
     long_description_content_type="text/markdown",
     license="MIT",
-    packages=setuptools.find_packages(exclude=["tests", "tests.*"]),
-    package_data={str(module_folder): []},
+    packages=setuptools.find_packages(
+        include=[module_folder, f"{module_folder}.*"]),
+    package_data={module_folder: []},
     install_requires=required,
     extras_require=extras_require,
     test_suite="tests",
@@ -49,7 +51,7 @@ setuptools.setup(
         "Programming Language :: Python :: 3.10",
     ],
     python_requires=">=3.7",
-    include_package_data=True,
+    # include_package_data=True, # Leave out cause wacky
     zip_safe=False,
     entry_points={
         "distutils.setup_keywords": [
