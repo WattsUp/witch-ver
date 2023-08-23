@@ -21,7 +21,7 @@ class TestGit(base.TestBase):
 
     # Can't commit a git repo to this repo
     # Test repos are zipped, extract before testing
-    for i in range(7):
+    for i in range(8):
       path = cls._DATA_ROOT.joinpath(f"git-{i}")
       if not path.exists():
         z = path.with_suffix(".zip")
@@ -163,6 +163,25 @@ class TestGit(base.TestBase):
     self.assertFalse(g.is_dirty)
     self.assertEqual(1, g.distance)
     self.assertEqual("0.0.0", g.tag)
+
+    # git-7 is a standard repo
+    # But the cache was updated before v0.1.0 tag was added
+    # Expect to rerun to get new tag name
+    path = self._DATA_ROOT.joinpath("git-7")
+    g = git.fetch(path=path)
+    d = g.asdict()
+    d["tag"] = "v0.0.0"
+    d["distance"] = 1
+
+    g = git.fetch(path=path, cache=d)
+    self.assertEqual("2200dfa76743325303418980c363826ccfd7acbd", g.sha)
+    self.assertEqual("2200dfa", g.sha_abbrev)
+    self.assertEqual("master", g.branch)
+    self.assertEqual(
+        datetime.datetime.fromisoformat("2023-08-23T12:53:05-07:00"), g.date)
+    self.assertFalse(g.is_dirty)
+    self.assertEqual(0, g.distance)
+    self.assertEqual("v0.1.0", g.tag)
 
   def test_dict(self):
     major = random.randint(0, 100)
