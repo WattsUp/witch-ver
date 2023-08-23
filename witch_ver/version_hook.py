@@ -45,17 +45,21 @@ def _get_version() -> dict:
         items.append(f'    "{k}": {v}')
     new_file += ",\n".join(items)
     new_file += "\n}"
-    with open(__file__, "r", encoding="utf-8", newline="") as file:
-      buf = file.read()
-      orig = re.search(r"version_dict = {.*?}", buf, flags=re.S)
-      if orig[0] == new_file:
+    with open(__file__, "rb") as file:
+      buf_b = file.read()
+      new_file_b = new_file.encode()
+      if b"\r\n" in buf_b:
+        new_file_b = new_file_b.replace(b"\n", b"\r\n")
+
+      orig = re.search(br"version_dict = {.*?}", buf_b, flags=re.S)
+      if orig[0] == new_file_b:
         return version_dict
       # Modifications will occur, write (avoids over touching for systems that
       # care about modification date)
-      buf = buf[:orig.start()] + new_file + buf[orig.end():]
+      buf_b = buf_b[:orig.start()] + new_file_b + buf_b[orig.end():]
 
-    with open(__file__, "w", encoding="utf-8", newline="") as file:
-      file.write(buf)
+    with open(__file__, "wb") as file:
+      file.write(buf_b)
     return _semver
   except RuntimeError:
     _semver = version_dict

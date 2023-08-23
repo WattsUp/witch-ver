@@ -12,6 +12,22 @@ from typing import Dict, Union, Any, Callable
 from witch_ver import git
 
 
+def _write_matching_newline(path: pathlib.Path, buf: str) -> None:
+  """Write buf to path, whilst matching existing newlines if path exists
+
+  Args:
+    path: Path to file to write
+    buf: File contents to write
+  """
+  buf_b = buf.encode()
+  if path.exists():
+    with open(path, "rb") as file:
+      if b"\r\n" in file.read():
+        buf_b = buf_b.replace(b"\n", b"\r\n")
+  with open(path, "wb") as file:
+    file.write(buf_b)
+
+
 def use_witch_ver(
     dist: setuptools.Distribution,
     _: str,
@@ -105,8 +121,7 @@ def use_witch_ver(
   for v in packages:
     # Copy version_hook
     dst = root.joinpath(v, "version.py")
-    with open(dst, "w", encoding="utf-8") as file:
-      file.write(version_py)
+    _write_matching_newline(dst, version_py)
 
     # Install import directive to __init__
     dst = root.joinpath(v, "__init__.py")
@@ -127,7 +142,6 @@ def use_witch_ver(
       header: re.Match
       buf = buf[:header.end()] + import_str + "\n" + buf[header.end():]
 
-    with open(dst, "w", encoding="utf-8") as file:
-      file.write(buf)
+    _write_matching_newline(dst, buf)
 
   dist.metadata.version = str(g)
