@@ -1,14 +1,15 @@
 """Command runner
 """
 
+import typing as t
+
 import os
 import subprocess
-from typing import List, Tuple, Union
 
 
 def run(cmd: str,
-        args: List[str],
-        cwd: Union[str, bytes, os.PathLike] = None) -> Tuple[str, int]:
+        args: t.List[str],
+        cwd: t.Union[str, bytes, os.PathLike] = None) -> t.Tuple[str, int]:
   """Run a command and capture its output and return code
 
   Args:

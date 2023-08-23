@@ -2,9 +2,9 @@
 """
 
 from __future__ import annotations
+import typing as t
 
 import re
-from typing import List, Union
 
 # From https://semver.org/
 _NUM_ID = r"0|[1-9]\d*"
@@ -29,8 +29,8 @@ class SemVer:
                major: int = None,
                minor: int = None,
                patch: int = None,
-               prerelease: Union[str, List[str]] = None,
-               build: Union[str, List[str]] = None) -> None:
+               prerelease: t.Union[str, t.List[str]] = None,
+               build: t.Union[str, t.List[str]] = None) -> None:
     """Create a SemVer object
 
     Must provide a string to parse or at least major, minor, & patch.
@@ -50,8 +50,8 @@ class SemVer:
     self._major = None
     self._minor = None
     self._patch = None
-    self._prerelease: List[str] = []
-    self._build: List[str] = []
+    self._prerelease: t.List[str] = []
+    self._build: t.List[str] = []
 
     if string is not None:
       m = REGEX.match(string)
@@ -261,7 +261,7 @@ class SemVer:
     return self._patch
 
   @property
-  def prerelease_list(self) -> List[str]:
+  def prerelease_list(self) -> t.List[str]:
     """Prerelease tags as a list
     """
     return self._prerelease
@@ -273,7 +273,7 @@ class SemVer:
     return ".".join(self._prerelease)
 
   @property
-  def build_list(self) -> List[str]:
+  def build_list(self) -> t.List[str]:
     """Build tags as a list
     """
     return self._build

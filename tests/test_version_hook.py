@@ -16,13 +16,14 @@ class TestVersionHook(base.TestBase):
   """
 
   def test_get_version(self):
-    v = witch_ver.version_dict
+    path_orig = pathlib.Path(
+        witch_ver.__file__).with_name("version_hook.py").resolve()
+    path_test = self._TEST_ROOT.joinpath("version_hook.py")
 
-    # Setup mock IO for the file
-    path = pathlib.Path(witch_ver.__file__).with_name("version_hook.py")
-    with open(path, "r", encoding="utf-8") as file:
+    with open(path_orig, "r", encoding="utf-8") as file:
       orig_file = file.read()
 
+    v = witch_ver.version_dict
     target_v = textwrap.dedent(f"""\
     version_dict = {{
         "tag": {"None"  if v["tag"]  is None else f'"{v["tag"]}"'},
@@ -36,61 +37,89 @@ class TestVersionHook(base.TestBase):
         "pretty_str": "{v["pretty_str"]}",
         "git_dir": None
     }}""")
-    target_file = re.sub(r"version_dict = {.*?}",
-                         target_v,
-                         orig_file,
-                         count=1,
-                         flags=re.S)
+    target = re.sub(r"version_dict = {.*?}",
+                    target_v,
+                    orig_file,
+                    count=1,
+                    flags=re.S)
 
-    # Mock an overwrite
-    mock_open: mock.MagicMock = mock.mock_open(read_data=orig_file)
+    def check_file(crlf: bool) -> None:
+      """Check if contents match and line ending is proper
+
+      Args:
+        crlf: True will expect CRLF line endings, False for LF
+      """
+      with open(path_test, "r", encoding="utf-8") as file:
+        buf = file.read()
+        self.assertEqual(target, buf)
+
+      with open(path_test, "rb") as file:
+        is_crlf = b"\r\n" in file.read()
+        self.assertEqual(crlf, is_crlf)
+
+    # Copy test file over
+    with open(path_test, "wb") as dst:
+      dst.write(orig_file.encode())
+
+    original_open = open
+
+    calls = []
+
+    def mock_open(fname: str, *args, **kwargs) -> object:
+      calls.append({"file": fname, "args": args, "kwargs": kwargs})
+      # Retarget file operations to test file
+      return original_open(path_test, *args, **kwargs)
+
+    # Upon import, it will write to path_test
+    calls.clear()
     with mock.patch("builtins.open", mock_open):
       from witch_ver import version_hook  # pylint: disable=import-outside-toplevel
-      self.assertNotEqual(None, version_hook._semver)  # pylint: disable=protected-access
-      self.assertDictEqual(v, version_hook.version_dict)
+    check_file(False)
+    self.assertEqual(2, len(calls))
+    self.assertEqual("rb", calls[0]["args"][0])
+    self.assertEqual("wb", calls[1]["args"][0])
 
-      # Check open was called with newline=""
-      # This will preserve existing line endings
-      mock_open.assert_any_call(str(path), "r", encoding="utf-8", newline="")
-      mock_open.assert_any_call(str(path), "w", encoding="utf-8", newline="")
-
-      handle_r: mock.MagicMock = mock_open().read
-      handle_r.assert_called_once()
-
-      handle_w: mock.MagicMock = mock_open().write
-      handle_w.assert_called_once_with(target_file)
-
-      # Call again but shouldn't run again since _semver is not None
-      result = version_hook._get_version()  # pylint: disable=protected-access
-      handle_r.assert_called_once()
-      handle_w.assert_called_once()
-
-    # Mock no changes needed
-    mock_open: mock.MagicMock = mock.mock_open(read_data=target_file)
+    # Cached, results, no file operations
+    calls.clear()
     with mock.patch("builtins.open", mock_open):
-      version_hook._semver = None  # pylint: disable=protected-access
       result = version_hook._get_version()  # pylint: disable=protected-access
-      self.assertDictEqual(v, result)
+      self.assertEqual(v, result)
+    check_file(False)
+    self.assertEqual(0, len(calls))
 
-      handle_r: mock.MagicMock = mock_open().read
-      handle_r.assert_called_once()
+    # No changes needed
+    calls.clear()
+    version_hook._semver = None  # pylint: disable=protected-access
+    with mock.patch("builtins.open", mock_open):
+      result = version_hook._get_version()  # pylint: disable=protected-access
+      self.assertEqual(v, result)
+    check_file(False)
+    self.assertEqual(1, len(calls))
+    self.assertEqual("rb", calls[0]["args"][0])
 
-      handle_w: mock.MagicMock = mock_open().write
-      handle_w.assert_not_called()
+    # CRLF file
+    version_hook._semver = None  # pylint: disable=protected-access
+    with open(path_test, "wb") as file:
+      file.write(orig_file.encode().replace(b"\n", b"\r\n"))
+    calls.clear()
+    with mock.patch("builtins.open", mock_open):
+      result = version_hook._get_version()  # pylint: disable=protected-access
+      self.assertEqual(v, result)
+    check_file(True)
+    self.assertEqual(2, len(calls))
+    self.assertEqual("rb", calls[0]["args"][0])
+    self.assertEqual("wb", calls[1]["args"][0])
+
+    # Clear Cache
+    version_hook._semver = None  # pylint: disable=protected-access
 
     # Mock not in a git repository
-    mock_open: mock.MagicMock = mock.mock_open(read_data=target_file)
+    def mock_fetch_catch(*args, **kwargs):
+      raise RuntimeError
+
+    calls.clear()
     with mock.patch("builtins.open", mock_open):
-      version_hook._semver = None  # pylint: disable=protected-access
-
-      def mock_fetch(*args, **kwargs):
-        raise RuntimeError
-
-      with mock.patch("witch_ver.fetch", mock_fetch):
+      with mock.patch("witch_ver.fetch", mock_fetch_catch):
         result = version_hook._get_version()  # pylint: disable=protected-access
-
-      handle_r: mock.MagicMock = mock_open().read
-      handle_r.assert_not_called()
-
-      handle_w: mock.MagicMock = mock_open().write
-      handle_w.assert_not_called()
+        self.assertEqual(v, result)
+    self.assertEqual(0, len(calls))
