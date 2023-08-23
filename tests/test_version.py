@@ -20,7 +20,7 @@ class TestVersion(base.TestBase):
 
     def check_file(crlf: bool) -> None:
       """Check if contents match and line ending is proper
-      
+
       Args:
         crlf: True will expect CRLF line endings, False for LF
       """

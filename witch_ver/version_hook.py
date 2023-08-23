@@ -21,7 +21,7 @@ def _get_version() -> dict:
     import witch_ver  # pylint: disable=import-outside-toplevel
   except ImportError:
     _semver = version_dict
-    return version_dict
+    return _semver
 
   try:
     import re  # pylint: disable=import-outside-toplevel
@@ -53,7 +53,7 @@ def _get_version() -> dict:
 
       orig = re.search(br"version_dict = {.*?}", buf_b, flags=re.S)
       if orig[0] == new_file_b:
-        return version_dict
+        return _semver
       # Modifications will occur, write (avoids over touching for systems that
       # care about modification date)
       buf_b = buf_b[:orig.start()] + new_file_b + buf_b[orig.end():]
@@ -63,7 +63,7 @@ def _get_version() -> dict:
     return _semver
   except RuntimeError:
     _semver = version_dict
-    return version_dict
+    return _semver
 
 
 version_dict = _get_version()
