@@ -62,12 +62,12 @@ def _get_version() -> dict:
     new_file += "\n}\n"
     path = pathlib.Path(__file__).with_name("_version.py")
     if path.exists():
-      with open(path, "r", encoding="utf-8") as file:
+      with open(path, "r", encoding="utf-8", newline="") as file:
         buf = file.read()
         if buf == new_file:
           return version_dict
 
-    with open(path, "w", encoding="utf-8") as file:
+    with open(path, "w", encoding="utf-8", newline="") as file:
       file.write(new_file)
     return _semver
   except RuntimeError:

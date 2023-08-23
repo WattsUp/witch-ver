@@ -45,7 +45,7 @@ def _get_version() -> dict:
         items.append(f'    "{k}": {v}')
     new_file += ",\n".join(items)
     new_file += "\n}"
-    with open(__file__, "r", encoding="utf-8") as file:
+    with open(__file__, "r", encoding="utf-8", newline="") as file:
       buf = file.read()
       orig = re.search(r"version_dict = {.*?}", buf, flags=re.S)
       if orig[0] == new_file:
@@ -54,7 +54,7 @@ def _get_version() -> dict:
       # care about modification date)
       buf = buf[:orig.start()] + new_file + buf[orig.end():]
 
-    with open(__file__, "w", encoding="utf-8") as file:
+    with open(__file__, "w", encoding="utf-8", newline="") as file:
       file.write(buf)
     return _semver
   except RuntimeError:
