@@ -291,19 +291,34 @@ def fetch(path: t.Union[str, bytes, os.PathLike] = None,
   else:
     dirty = True
 
+  describe, returncode = run_check(["describe"] + describe_args)
+  if "-" in describe:
+    m = REGEX.match(describe)
+    if m is None:
+      raise ValueError(f"git describe did not match regex '{describe}'")
+    m = m.groupdict()
+
+    distance = int(m["distance"])
+    tag = m["tag"]
+    sha_abbrev = m["sha"]
+  else:
+    d, returncode = run_check(["rev-list", "HEAD", "--count"])
+
+    distance = int(d)
+    tag = None
+    sha_abbrev = describe
+
   if cache is not None:
     required = ["sha", "sha_abbrev", "branch", "date", "distance", "tag"]
-    if all(r in cache for r in required) and sha == cache["sha"]:
+    if (all(r in cache for r in required) and sha == cache["sha"] and
+        tag == cache["tag"]):
       for r in required:
         kwargs[r] = cache[r]
       kwargs["git_dir"] = git_dir
       kwargs["dirty"] = dirty
       return GitVer(tag_prefix=tag_prefix, pretty_str=custom_str_func, **kwargs)
 
-  describe, returncode = run_check(["describe"] + describe_args)
-
   branch, returncode = run_check(["rev-parse", "--abbrev-ref", "HEAD"])
-
   if branch == "HEAD":
     branches, returncode = run_check(
         ["branch", "--format=%(refname:lstrip=2)", "--contains"])
@@ -327,22 +342,6 @@ def fetch(path: t.Union[str, bytes, os.PathLike] = None,
 
   raw, returncode = run_check(["show", "-s", "--format=%ci", "HEAD"])
   date = datetime.datetime.strptime(raw, "%Y-%m-%d %H:%M:%S %z")
-
-  if "-" in describe:
-    m = REGEX.match(describe)
-    if m is None:
-      raise ValueError(f"git describe did not match regex '{describe}'")
-    m = m.groupdict()
-
-    distance = int(m["distance"])
-    tag = m["tag"]
-    sha_abbrev = m["sha"]
-  else:
-    d, returncode = run_check(["rev-list", "HEAD", "--count"])
-
-    distance = int(d)
-    tag = None
-    sha_abbrev = describe
 
   kwargs["sha"] = sha
   kwargs["sha_abbrev"] = sha_abbrev
