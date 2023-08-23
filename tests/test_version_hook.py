@@ -49,6 +49,11 @@ class TestVersionHook(base.TestBase):
       self.assertNotEqual(None, version_hook._semver)  # pylint: disable=protected-access
       self.assertDictEqual(v, version_hook.version_dict)
 
+      # Check open was called with newline=""
+      # This will preserve existing line endings
+      mock_open.assert_any_call(str(path), "r", encoding="utf-8", newline="")
+      mock_open.assert_any_call(str(path), "w", encoding="utf-8", newline="")
+
       handle_r: mock.MagicMock = mock_open().read
       handle_r.assert_called_once()
 
