@@ -2,7 +2,9 @@
 """
 
 import pathlib
+import random
 import shutil
+import string
 import time
 import unittest
 
@@ -17,6 +19,18 @@ class TestBase(unittest.TestCase):
 
   _TEST_ROOT = pathlib.Path(".test")
   _DATA_ROOT = pathlib.Path(__file__).with_name("data")
+
+  @classmethod
+  def random_string(cls, length: int = 20) -> str:
+    """Generate a random string a-zA-Z
+
+    Args:
+      length: Length of string to generate
+
+    Returns:
+      Random string
+    """
+    return "".join(random.choices(string.ascii_letters, k=length))
 
   def __clean_test_root(self):
     if self._TEST_ROOT.exists():

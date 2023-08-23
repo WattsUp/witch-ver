@@ -6,11 +6,13 @@ Especially for self-versioning due to importing and gitignore stuff...
 
 __all__ = ["__version__", "version_dict"]
 
+import datetime
+import pathlib
+
 try:
   from witch_ver._version import version_dict
 except ImportError:
   # Fallback
-  import datetime  # pylint: disable=import-outside-toplevel
   version_dict = {
       "tag": None,
       "tag_prefix": "v",
@@ -27,6 +29,26 @@ except ImportError:
 _semver = None
 
 
+def _write_matching_newline(path: pathlib.Path, buf: str) -> None:
+  """Write buf to path, whilst matching existing newlines if path exists
+
+  Args:
+    path: Path to file to write
+    buf: File contents to write
+  """
+  buf_b = buf.encode()
+  if path.exists():
+    with open(path, "rb") as file:
+      buf_b_existing = file.read()
+      if b"\r\n" in buf_b_existing:
+        buf_b = buf_b.replace(b"\n", b"\r\n")
+    if buf_b == buf_b_existing:
+      # Don't write an identical file, preserves modification time
+      return
+  with open(path, "wb") as file:
+    file.write(buf_b)
+
+
 def _get_version() -> dict:
   """Get latest version
 
@@ -40,11 +62,9 @@ def _get_version() -> dict:
     from witch_ver import git  # pylint: disable=import-outside-toplevel
   except ImportError:
     _semver = version_dict
-    return version_dict
+    return _semver
 
   try:
-    import pathlib  # pylint: disable=import-outside-toplevel
-
     config = {"custom_str_func": git.str_func_pep440}
 
     g = git.fetch(**config, cache=version_dict)
@@ -61,24 +81,11 @@ def _get_version() -> dict:
     new_file += ",\n".join(items)
     new_file += "\n}\n"
     path = pathlib.Path(__file__).with_name("_version.py")
-    if path.exists():
-      with open(path, "r", encoding="utf-8") as file:
-        buf = file.read()
-        if buf == new_file:
-          return version_dict
-
-    buf_b = new_file.encode()
-    if path.exists():
-      with open(path, "rb") as file:
-        if b"\r\n" in file.read():
-          buf_b = buf_b.replace(b"\n", b"\r\n")
-    with open(path, "wb") as file:
-      file.write(buf_b)
-
+    _write_matching_newline(path, new_file)
     return _semver
   except RuntimeError:
     _semver = version_dict
-    return version_dict
+    return _semver
 
 
 version_dict = _get_version()

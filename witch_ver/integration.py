@@ -22,8 +22,12 @@ def _write_matching_newline(path: pathlib.Path, buf: str) -> None:
   buf_b = buf.encode()
   if path.exists():
     with open(path, "rb") as file:
-      if b"\r\n" in file.read():
+      buf_b_existing = file.read()
+      if b"\r\n" in buf_b_existing:
         buf_b = buf_b.replace(b"\n", b"\r\n")
+    if buf_b == buf_b_existing:
+      # Don't write an identical file, preserves modification time
+      return
   with open(path, "wb") as file:
     file.write(buf_b)
 
