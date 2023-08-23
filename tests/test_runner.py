@@ -1,10 +1,11 @@
 """Test module runner
 """
 
+import typing as t
+
 import io
 import os
 import subprocess
-from typing import List, Union
 from unittest import mock
 
 from witch_ver import runner
@@ -20,14 +21,14 @@ class TestRunner(base.TestBase):
     bad_cmd = "_"
 
     class MockData:
-      cmd_called: List[str] = None
-      cwd_called: Union[str, bytes, os.PathLike] = None
+      cmd_called: t.List[str] = None
+      cwd_called: t.Union[str, bytes, os.PathLike] = None
       stdout_out: str = None
       returncode_out: int = None
 
     m = MockData()
 
-    def mock_run(cmd: List[str], **kwargs) -> subprocess.CompletedProcess:
+    def mock_run(cmd: t.List[str], **kwargs) -> subprocess.CompletedProcess:
       m.cmd_called = cmd
       m.cwd_called = kwargs.get("cwd", None)
 

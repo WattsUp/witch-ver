@@ -2,13 +2,13 @@
 """
 
 from __future__ import annotations
+import typing as t
 
 import datetime
 import functools
 import os
 import pathlib
 import re
-from typing import Callable, List, Tuple, Union
 
 from witch_ver import runner
 from witch_ver.semver import SemVer
@@ -205,10 +205,10 @@ class GitVer(SemVer):
     return self._tag_prefix
 
 
-def fetch(path: Union[str, bytes, os.PathLike] = None,
+def fetch(path: t.Union[str, bytes, os.PathLike] = None,
           tag_prefix: str = "v",
-          describe_args: List[str] = None,
-          custom_str_func: Callable = None,
+          describe_args: t.List[str] = None,
+          custom_str_func: t.Callable = None,
           cache: dict = None,
           **kwargs) -> GitVer:
   """Run git commands to fetch current repository status
@@ -241,7 +241,7 @@ def fetch(path: Union[str, bytes, os.PathLike] = None,
 
   run = functools.partial(runner.run, "git", cwd=path)
 
-  def run_check(cmd, *args, **kwargs) -> Tuple[str, int]:
+  def run_check(cmd, *args, **kwargs) -> t.Tuple[str, int]:
     stdout, returncode = run(cmd, *args, **kwargs)
     if stdout is None or returncode != 0:
       raise RuntimeError(

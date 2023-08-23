@@ -36,9 +36,9 @@ class TestVersion(base.TestBase):
 
     calls = []
 
-    def mock_open(*args, **kwargs) -> object:
-      calls.append({"args": args, "kwargs": kwargs})
-      return original_open(*args, **kwargs)
+    def mock_open(fname: str, *args, **kwargs) -> object:
+      calls.append({"file": fname, "args": args, "kwargs": kwargs})
+      return original_open(fname, *args, **kwargs)
 
     # File does not exist yet
     calls.clear()
@@ -46,7 +46,7 @@ class TestVersion(base.TestBase):
       version._write_matching_newline(path, contents)  # pylint: disable=protected-access
     check_file(False)
     self.assertEqual(1, len(calls))
-    self.assertEqual("wb", calls[0]["args"][1])
+    self.assertEqual("wb", calls[0]["args"][0])
 
     # File does exist, no modifications to take place
     calls.clear()
@@ -54,7 +54,7 @@ class TestVersion(base.TestBase):
       version._write_matching_newline(path, contents)  # pylint: disable=protected-access
     check_file(False)
     self.assertEqual(1, len(calls))
-    self.assertEqual("rb", calls[0]["args"][1])
+    self.assertEqual("rb", calls[0]["args"][0])
 
     with open(path, "wb") as file:
       contents_b = contents.encode().replace(b"\n", b"\r\n")
@@ -66,7 +66,7 @@ class TestVersion(base.TestBase):
       version._write_matching_newline(path, contents)  # pylint: disable=protected-access
     check_file(True)
     self.assertEqual(1, len(calls))
-    self.assertEqual("rb", calls[0]["args"][1])
+    self.assertEqual("rb", calls[0]["args"][0])
 
     # Modify contents
     contents += self.random_string()
@@ -77,11 +77,11 @@ class TestVersion(base.TestBase):
       version._write_matching_newline(path, contents)  # pylint: disable=protected-access
     check_file(True)
     self.assertEqual(2, len(calls))
-    self.assertEqual("rb", calls[0]["args"][1])
-    self.assertEqual("wb", calls[1]["args"][1])
+    self.assertEqual("rb", calls[0]["args"][0])
+    self.assertEqual("wb", calls[1]["args"][0])
 
   def test_get_version(self):
-    path_version = self._TEST_ROOT.joinpath("version.py").resolve()
+    path_version = self._TEST_ROOT.joinpath("version.py")
 
     target_v = witch_ver.version_dict
 

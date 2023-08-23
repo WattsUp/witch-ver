@@ -1,15 +1,22 @@
 """Integration into various automated tools
 """
 
+import typing as t
+
 import ast
 import inspect
 import pathlib
 import re
 import textwrap
 import setuptools
-from typing import Dict, Union, Any, Callable
 
 from witch_ver import git
+
+# Boolean
+# Or a configuration
+# Or a function to produce a configuration
+UseWitchVerValue = t.Union[bool, t.Dict[str, t.Any],
+                           t.Callable[[], t.Dict[str, t.Any]]]
 
 
 def _write_matching_newline(path: pathlib.Path, buf: str) -> None:
@@ -32,11 +39,8 @@ def _write_matching_newline(path: pathlib.Path, buf: str) -> None:
     file.write(buf_b)
 
 
-def use_witch_ver(
-    dist: setuptools.Distribution,
-    _: str,
-    value: Union[bool, Dict[str, Any], Callable[[], Dict[str, Any]]],
-) -> None:
+def use_witch_ver(dist: setuptools.Distribution, _: str,
+                  value: UseWitchVerValue) -> None:
   """Entrypoint for setuptools
 
   Args:
@@ -52,6 +56,9 @@ def use_witch_ver(
     config.update(value())
   elif isinstance(value, dict):
     config.update(value)
+  elif not isinstance(value, bool):
+    raise ValueError("Expected boolean, a dictionary, or a function to produce "
+                     f"a dictionary. Got: {type(value)}")
 
   # custom_str_func may be a discrete function or a member of git
   f = config["custom_str_func"]

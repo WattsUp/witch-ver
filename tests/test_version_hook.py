@@ -18,7 +18,7 @@ class TestVersionHook(base.TestBase):
   def test_get_version(self):
     path_orig = pathlib.Path(
         witch_ver.__file__).with_name("version_hook.py").resolve()
-    path_test = self._TEST_ROOT.joinpath("version_hook.py").resolve()
+    path_test = self._TEST_ROOT.joinpath("version_hook.py")
 
     with open(path_orig, "r", encoding="utf-8") as file:
       orig_file = file.read()
@@ -65,10 +65,10 @@ class TestVersionHook(base.TestBase):
 
     calls = []
 
-    def mock_open(*args, **kwargs) -> object:
-      calls.append({"args": args, "kwargs": kwargs})
+    def mock_open(fname: str, *args, **kwargs) -> object:
+      calls.append({"file": fname, "args": args, "kwargs": kwargs})
       # Retarget file operations to test file
-      return original_open(path_test, *args[1:], **kwargs)
+      return original_open(path_test, *args, **kwargs)
 
     # Upon import, it will write to path_test
     calls.clear()
@@ -76,8 +76,8 @@ class TestVersionHook(base.TestBase):
       from witch_ver import version_hook  # pylint: disable=import-outside-toplevel
     check_file(False)
     self.assertEqual(2, len(calls))
-    self.assertEqual("rb", calls[0]["args"][1])
-    self.assertEqual("wb", calls[1]["args"][1])
+    self.assertEqual("rb", calls[0]["args"][0])
+    self.assertEqual("wb", calls[1]["args"][0])
 
     # Cached, results, no file operations
     calls.clear()
@@ -95,7 +95,7 @@ class TestVersionHook(base.TestBase):
       self.assertEqual(v, result)
     check_file(False)
     self.assertEqual(1, len(calls))
-    self.assertEqual("rb", calls[0]["args"][1])
+    self.assertEqual("rb", calls[0]["args"][0])
 
     # CRLF file
     version_hook._semver = None  # pylint: disable=protected-access
@@ -107,8 +107,8 @@ class TestVersionHook(base.TestBase):
       self.assertEqual(v, result)
     check_file(True)
     self.assertEqual(2, len(calls))
-    self.assertEqual("rb", calls[0]["args"][1])
-    self.assertEqual("wb", calls[1]["args"][1])
+    self.assertEqual("rb", calls[0]["args"][0])
+    self.assertEqual("wb", calls[1]["args"][0])
 
     # Clear Cache
     version_hook._semver = None  # pylint: disable=protected-access

@@ -6,6 +6,7 @@ import io
 import pathlib
 import os
 import re
+import shutil
 import sys
 import textwrap
 from types import ModuleType
@@ -41,39 +42,109 @@ class TestIntegration(base.TestBase):
     spec.loader.exec_module(module)
     return module
 
-  def test_use_witch_ver_1(self):
+  def test_write_matching_newline(self):
+    path = self._TEST_ROOT.joinpath("version.txt")
+    contents = "\n".join(self.random_string() for _ in range(10))
+
+    def check_file(crlf: bool) -> None:
+      """Check if contents match and line ending is proper
+
+      Args:
+        crlf: True will expect CRLF line endings, False for LF
+      """
+      with open(path, "r", encoding="utf-8") as file:
+        buf = file.read()
+        self.assertEqual(contents, buf)
+
+      with open(path, "rb") as file:
+        is_crlf = b"\r\n" in file.read()
+        self.assertEqual(crlf, is_crlf)
+
+    original_open = open
+
+    calls = []
+
+    def mock_open(fname: str, *args, **kwargs) -> object:
+      calls.append({"file": fname, "args": args, "kwargs": kwargs})
+      return original_open(fname, *args, **kwargs)
+
+    # File does not exist yet
+    calls.clear()
+    with mock.patch("builtins.open", mock_open):
+      integration._write_matching_newline(path, contents)  # pylint: disable=protected-access
+    check_file(False)
+    self.assertEqual(1, len(calls))
+    self.assertEqual("wb", calls[0]["args"][0])
+
+    # File does exist, no modifications to take place
+    calls.clear()
+    with mock.patch("builtins.open", mock_open):
+      integration._write_matching_newline(path, contents)  # pylint: disable=protected-access
+    check_file(False)
+    self.assertEqual(1, len(calls))
+    self.assertEqual("rb", calls[0]["args"][0])
+
+    with open(path, "wb") as file:
+      contents_b = contents.encode().replace(b"\n", b"\r\n")
+      file.write(contents_b)
+
+    # File does exist as CRLF, no modifications to take place
+    calls.clear()
+    with mock.patch("builtins.open", mock_open):
+      integration._write_matching_newline(path, contents)  # pylint: disable=protected-access
+    check_file(True)
+    self.assertEqual(1, len(calls))
+    self.assertEqual("rb", calls[0]["args"][0])
+
+    # Modify contents
+    contents += self.random_string()
+
+    # File does exist as CRLF
+    calls.clear()
+    with mock.patch("builtins.open", mock_open):
+      integration._write_matching_newline(path, contents)  # pylint: disable=protected-access
+    check_file(True)
+    self.assertEqual(2, len(calls))
+    self.assertEqual("rb", calls[0]["args"][0])
+    self.assertEqual("wb", calls[1]["args"][0])
+
+  def test_use_witch_ver(self):
+    # use_witch_ver = False
     integration.use_witch_ver(None, None, False)
 
+    # use_witch_ver = config
+    # custom_str_func is not callable
     value = {"custom_str_func": None}
     self.assertRaises(TypeError, integration.use_witch_ver, None, None, value)
 
+    # use_witch_ver = function -> config
+    # custom_str_func is not callable
     self.assertRaises(TypeError, integration.use_witch_ver, None, None,
                       lambda: {"custom_str_func": None})
 
-    self._test_use_witch_ver_package1()
-    self._test_use_witch_ver_package2()
-    self._test_use_witch_ver_package3()
+    # use_witch_ver = function -> not a config
+    self.assertRaises(ValueError, integration.use_witch_ver, None, None,
+                      lambda: "version")
 
-  def _test_use_witch_ver_package1(self):
-    orig_open = open
-    mock_files = {}
+    # use_witch_ver = not a boolean or dictionary
+    self.assertRaises(ValueError, integration.use_witch_ver, None, None,
+                      "version")
 
-    def mock_open(fname: str, *args, **kwargs):
-      if str(fname) in mock_files:
-        return mock_files[str(fname)]
-      return orig_open(fname, *args, **kwargs)
+  def test_use_witch_ver_package1(self):
+    path_package = self._DATA_ROOT.joinpath("package-1")
+    path_test = self._TEST_ROOT.joinpath("package")
+    shutil.copytree(path_package, path_test)
 
-    # Change folder to package-1
-    # use_witch_ver = True
-    package = self._DATA_ROOT.joinpath("package-1")
-    setup = self._import(package.joinpath("setup.py"))
-    orig_cwd = os.getcwd()
-    orig_argv = sys.argv
+    setup = self._import(path_test.joinpath("setup.py"))
+
+    # Change folder to package
+    original_cwd = os.getcwd()
+    original_argv = sys.argv
     try:
-      os.chdir(package)
+      os.chdir(path_test)
       sys.argv = ["setup.py", "--version"]
 
-      path_ver = str(package.joinpath("hello", "version.py"))
+      path_version = path_test.joinpath("hello", "version.py")
 
       # Prepare the expected output for version.py
       path_version_hook = pathlib.Path(
@@ -100,9 +171,7 @@ class TestIntegration(base.TestBase):
                           flags=re.S)
 
       # Prepare the expected output for __init__.py
-      path_init = str(package.joinpath("hello", "__init__.py"))
-      with open(path_init, "r", encoding="utf-8") as file:
-        orig_init = file.read()
+      path_init = path_test.joinpath("hello", "__init__.py")
       target_init = textwrap.dedent('''\
       """Hello-world
       """
@@ -112,62 +181,37 @@ class TestIntegration(base.TestBase):
       from hello.world import MSG
       ''')
 
-      # Set up mock_files
-      mock_files = {
-          path_ver: mock.mock_open().return_value,
-          path_init: mock.mock_open(read_data=orig_init).return_value
-      }
-      with mock.patch("builtins.open", mock_open):
-        with mock.patch("sys.stdout", new=io.StringIO()) as fake_stdout:
-          setup.setup()
+      with mock.patch("sys.stdout", new=io.StringIO()) as fake_stdout:
+        setup.setup()
 
-        # Validate setup.py got proper version
-        self.assertEqual("0.0.0+1.gd78b554", fake_stdout.getvalue().strip())
+      # Validate setup.py got proper version
+      self.assertEqual("0.0.0+1.gd78b554", fake_stdout.getvalue().strip())
 
-        # Validate version.py got written
-        mock_file: mock.MagicMock = mock_files[path_ver]
-        handle_r: mock.MagicMock = mock_file.read
-        handle_r.assert_not_called()
+      with open(path_version, "r", encoding="utf-8") as file:
+        self.assertEqual(target_ver, file.read())
 
-        handle_w: mock.MagicMock = mock_file.write
-        handle_w.assert_called_once_with(target_ver)
-
-        # Validate __init__.py got written
-        mock_file: mock.MagicMock = mock_files[path_init]
-        handle_r: mock.MagicMock = mock_file.read
-        handle_r.assert_called_once()
-
-        handle_w: mock.MagicMock = mock_file.write
-        handle_w.assert_called_once_with(target_init)
+      with open(path_init, "r", encoding="utf-8") as file:
+        self.assertEqual(target_init, file.read())
 
     finally:
-      os.chdir(orig_cwd)
-      sys.argv = orig_argv
+      os.chdir(original_cwd)
+      sys.argv = original_argv
 
-  def _test_use_witch_ver_package2(self):
-    orig_open = open
-    mock_files = {}
+  def test_use_witch_ver_package2(self):
+    path_package = self._DATA_ROOT.joinpath("package-2")
+    path_test = self._TEST_ROOT.joinpath("package")
+    shutil.copytree(path_package, path_test)
 
-    def mock_open(fname: str, *args, **kwargs):
-      if str(fname) in mock_files:
-        return mock_files[str(fname)]
-      return orig_open(fname, *args, **kwargs)
+    setup = self._import(path_test.joinpath("setup.py"))
 
-    def mock_fetch(*args, **kwargs):
-      raise RuntimeError
-
-    # Change folder to package-2
-    # use_witch_ver = {"custom_str_func": "str_func_pep440"}
-    # And doesn't have a properly formatted docstring
-    package = self._DATA_ROOT.joinpath("package-2")
-    setup = self._import(package.joinpath("setup.py"))
-    orig_cwd = os.getcwd()
-    orig_argv = sys.argv
+    # Change folder to package
+    original_cwd = os.getcwd()
+    original_argv = sys.argv
     try:
-      os.chdir(package)
+      os.chdir(path_test)
       sys.argv = ["setup.py", "--version"]
 
-      path_ver = str(package.joinpath("hello", "version.py"))
+      path_version = path_test.joinpath("hello", "version.py")
 
       # Prepare the expected output for version.py
       path_version_hook = pathlib.Path(
@@ -194,9 +238,7 @@ class TestIntegration(base.TestBase):
                           flags=re.S)
 
       # Prepare the expected output for __init__.py
-      path_init = str(package.joinpath("hello", "__init__.py"))
-      with open(path_init, "r", encoding="utf-8") as file:
-        orig_init = file.read()
+      path_init = path_test.joinpath("hello", "__init__.py")
       target_init = textwrap.dedent('''\
       # Hello-world module is missing PEP0257 docstring
 
@@ -205,139 +247,80 @@ class TestIntegration(base.TestBase):
       from hello.version import __version__
       ''')
 
-      # Set up mock_files
-      mock_files = {
-          path_ver: mock.mock_open().return_value,
-          path_init: mock.mock_open(read_data=orig_init).return_value
-      }
-      with mock.patch("builtins.open", mock_open):
-        with mock.patch("sys.stdout", new=io.StringIO()) as fake_stdout:
+      with mock.patch("sys.stdout", new=io.StringIO()) as fake_stdout:
+        setup.setup()
+
+      # Validate setup.py got proper version
+      self.assertEqual("0.0.0+2.g93d84de", fake_stdout.getvalue().strip())
+
+      with open(path_version, "r", encoding="utf-8") as file:
+        self.assertEqual(target_ver, file.read())
+
+      with open(path_init, "r", encoding="utf-8") as file:
+        self.assertEqual(target_init, file.read())
+
+      # Mock outside of a git repository
+
+      def mock_fetch(*args, **kwargs):
+        raise RuntimeError
+
+      # Succeeds since version.py exists
+      with mock.patch("sys.stdout", new=io.StringIO()) as fake_stdout:
+        with mock.patch("witch_ver.git.fetch", mock_fetch):
           setup.setup()
+      self.assertEqual("0.0.0+2.g93d84de", fake_stdout.getvalue().strip())
 
-        # Validate setup.py got proper version
-        self.assertEqual("0.0.0+2.g93d84de", fake_stdout.getvalue().strip())
-
-        # Validate version.py got written
-        mock_file: mock.MagicMock = mock_files[path_ver]
-        handle_r: mock.MagicMock = mock_file.read
-        handle_r.assert_not_called()
-
-        handle_w: mock.MagicMock = mock_file.write
-        handle_w.assert_called_once_with(target_ver)
-
-        # Validate __init__.py got written
-        mock_file: mock.MagicMock = mock_files[path_init]
-        handle_r: mock.MagicMock = mock_file.read
-        handle_r.assert_called_once()
-
-        handle_w: mock.MagicMock = mock_file.write
-        handle_w.assert_called_once_with(target_init)
-
-      with mock.patch("builtins.open", mock_open):
-        with mock.patch("sys.stdout", new=io.StringIO()) as fake_stdout:
-          with mock.patch("witch_ver.git.fetch", mock_fetch):
-            self.assertRaises(RuntimeError, setup.setup)
-        self.assertEqual("", fake_stdout.getvalue())
+      # Fails since version.py does not exist
+      path_version.unlink()
+      with mock.patch("sys.stdout", new=io.StringIO()) as fake_stdout:
+        with mock.patch("witch_ver.git.fetch", mock_fetch):
+          self.assertRaises(RuntimeError, setup.setup)
+      self.assertEqual("", fake_stdout.getvalue().strip())
 
     finally:
-      os.chdir(orig_cwd)
-      sys.argv = orig_argv
+      os.chdir(original_cwd)
+      sys.argv = original_argv
 
-  def _test_use_witch_ver_package3(self):
-    orig_open = open
-    mock_files = {}
+  def test_use_witch_ver_package3(self):
+    path_package = self._DATA_ROOT.joinpath("package-3")
+    path_test = self._TEST_ROOT.joinpath("package")
+    shutil.copytree(path_package, path_test)
 
-    def mock_open(fname: str, *args, **kwargs):
-      if str(fname) in mock_files:
-        return mock_files[str(fname)]
-      return orig_open(fname, *args, **kwargs)
+    setup = self._import(path_test.joinpath("setup.py"))
 
-    def mock_fetch(*args, **kwargs):
-      raise RuntimeError
-
-    # Change folder to package-3
-    # use_witch_ver = {"custom_str_func": str_func}
-    # Already had integration ran
-    package = self._DATA_ROOT.joinpath("package-3")
-    setup = self._import(package.joinpath("setup.py"))
-    orig_cwd = os.getcwd()
-    orig_argv = sys.argv
+    # Change folder to package
+    original_cwd = os.getcwd()
+    original_argv = sys.argv
     try:
-      os.chdir(package)
+      os.chdir(path_test)
       sys.argv = ["setup.py", "--version"]
 
-      path_ver = str(package.joinpath("hello", "version.py"))
+      path_version = path_test.joinpath("hello", "version.py")
 
       # Prepare the expected output for version.py
       # Already exists so load that file
-      with open(path_ver, "r", encoding="utf-8") as file:
+      with open(path_version, "r", encoding="utf-8") as file:
         target_ver = file.read()
 
       # Prepare the expected output for __init__.py
       # Already installed so no changes
-      path_init = str(package.joinpath("hello", "__init__.py"))
+      path_init = path_test.joinpath("hello", "__init__.py")
       with open(path_init, "r", encoding="utf-8") as file:
-        orig_init = file.read()
+        target_init = file.read()
 
-      # Set up mock_files
-      mock_files = {
-          path_ver: mock.mock_open(read_data=target_ver).return_value,
-          path_init: mock.mock_open(read_data=orig_init).return_value
-      }
-      with mock.patch("builtins.open", mock_open):
-        with mock.patch("sys.stdout", new=io.StringIO()) as fake_stdout:
-          setup.setup()
+      with mock.patch("sys.stdout", new=io.StringIO()) as fake_stdout:
+        setup.setup()
 
-        # Validate setup.py got proper version
-        self.assertEqual("0.0.0+3.6f14ed6dadf0327ea2ee869bcc275118e71f300a",
-                         fake_stdout.getvalue().strip())
+      # Validate setup.py got proper version
+      self.assertEqual("0.0.0+3.6f14ed6dadf0327ea2ee869bcc275118e71f300a",
+                       fake_stdout.getvalue().strip())
 
-        # Validate version.py got written
-        mock_file: mock.MagicMock = mock_files[path_ver]
-        handle_r: mock.MagicMock = mock_file.read
-        handle_r.assert_not_called()
+      with open(path_version, "r", encoding="utf-8") as file:
+        self.assertEqual(target_ver, file.read())
 
-        handle_w: mock.MagicMock = mock_file.write
-        handle_w.assert_called_once_with(target_ver)
-
-        # Validate __init__.py got written
-        mock_file: mock.MagicMock = mock_files[path_init]
-        handle_r: mock.MagicMock = mock_file.read
-        handle_r.assert_called_once()
-
-        handle_w: mock.MagicMock = mock_file.write
-        handle_w.assert_not_called()
-
-      # Set up mock_files
-      mock_files = {
-          path_ver: mock.mock_open(read_data=target_ver).return_value,
-          path_init: mock.mock_open(read_data=orig_init).return_value
-      }
-      with mock.patch("builtins.open", mock_open):
-        with mock.patch("sys.stdout", new=io.StringIO()) as fake_stdout:
-          with mock.patch("witch_ver.git.fetch", mock_fetch):
-            setup.setup()
-
-        # Validate setup.py got proper version
-        self.assertEqual("0.0.0+3.6f14ed6dadf0327ea2ee869bcc275118e71f300a",
-                         fake_stdout.getvalue().strip())
-
-        # Validate version.py got written
-        mock_file: mock.MagicMock = mock_files[path_ver]
-        handle_r: mock.MagicMock = mock_file.read
-        handle_r.assert_called_once()
-
-        handle_w: mock.MagicMock = mock_file.write
-        handle_w.assert_called_once_with(target_ver)
-
-        # Validate __init__.py got written
-        mock_file: mock.MagicMock = mock_files[path_init]
-        handle_r: mock.MagicMock = mock_file.read
-        handle_r.assert_called_once()
-
-        handle_w: mock.MagicMock = mock_file.write
-        handle_w.assert_not_called()
+      with open(path_init, "r", encoding="utf-8") as file:
+        self.assertEqual(target_init, file.read())
 
     finally:
-      os.chdir(orig_cwd)
-      sys.argv = orig_argv
+      os.chdir(original_cwd)
+      sys.argv = original_argv

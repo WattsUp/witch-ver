@@ -17,8 +17,8 @@ class TestBase(unittest.TestCase):
   """Test base class
   """
 
-  _TEST_ROOT = pathlib.Path(".test")
-  _DATA_ROOT = pathlib.Path(__file__).with_name("data")
+  _TEST_ROOT = pathlib.Path.cwd().joinpath(".test").resolve()
+  _DATA_ROOT = pathlib.Path(__file__).resolve().parent.joinpath("data")
 
   @classmethod
   def random_string(cls, length: int = 20) -> str:
@@ -34,11 +34,7 @@ class TestBase(unittest.TestCase):
 
   def __clean_test_root(self):
     if self._TEST_ROOT.exists():
-      for f in self._TEST_ROOT.iterdir():
-        if f.is_file():
-          f.unlink()
-        else:
-          shutil.rmtree(f)
+      shutil.rmtree(self._TEST_ROOT)
 
   def setUp(self):
     self.__clean_test_root()

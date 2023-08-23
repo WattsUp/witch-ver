@@ -61,7 +61,7 @@ class TestGit(base.TestBase):
     self.assertTrue(g.is_dirty)
     self.assertEqual(0, g.distance)
     self.assertEqual("v1.2.3-rc1", g.tag)
-    self.assertEqual(path.joinpath(".git").resolve(), g.git_dir)
+    self.assertEqual(path.joinpath(".git"), g.git_dir)
 
     # git-1 is an empty repo with no commits
     path = self._DATA_ROOT.joinpath("git-1", "child")
@@ -75,7 +75,7 @@ class TestGit(base.TestBase):
     self.assertFalse(g.is_dirty)
     self.assertEqual(0, g.distance)
     self.assertEqual(None, g.tag)
-    self.assertEqual(path.with_name(".git").resolve(), g.git_dir)
+    self.assertEqual(path.with_name(".git"), g.git_dir)
 
     # git-2 has a branch but is detached
     path = self._DATA_ROOT.joinpath("git-2", ".gitignore")
