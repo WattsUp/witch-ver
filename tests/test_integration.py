@@ -312,7 +312,7 @@ class TestIntegration(base.TestBase):
         setup.setup()
 
       # Validate setup.py got proper version
-      self.assertEqual("0.0.0+3.6f14ed6dadf0327ea2ee869bcc275118e71f300a",
+      self.assertEqual("0.0.0+4.29c921b55529e5a6ba963bcbcaf2f7e1d9f9efe6",
                        fake_stdout.getvalue().strip())
 
       with open(path_version, "r", encoding="utf-8") as file:

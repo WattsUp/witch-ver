@@ -39,6 +39,7 @@ class TestGit(base.TestBase):
     self.assertRaises(TypeError, git.GitVer, tag=s, not_a_keyword=None)
 
   def test_fetch(self):
+    path = self._DATA_ROOT.joinpath("git-0")
     # This will always be in a git repo of witch-ver,
     # shouldn't touch the parent, so mock the call
     original_run = git.runner.run
@@ -46,13 +47,13 @@ class TestGit(base.TestBase):
       git.runner.run = lambda *args, **kwargs: (
           "fatal: not a git repository "
           "(or any of the parent directories): .git", 128)
-      self.assertRaises(RuntimeError, git.fetch)
+      self.assertRaises(RuntimeError, git.fetch, path)
     finally:
       git.runner.run = original_run
 
     # git-0 has a branch and is dirty
     path = self._DATA_ROOT.joinpath("git-0")
-    g = git.fetch(path=path)
+    g = git.fetch(path)
     self.assertEqual("dd0ae6e1409910a9189da369864554785f9b0d01", g.sha)
     self.assertEqual("dd0ae6e", g.sha_abbrev)
     self.assertEqual("feat/nothing", g.branch)
@@ -64,8 +65,8 @@ class TestGit(base.TestBase):
     self.assertEqual(path.joinpath(".git"), g.git_dir)
 
     # git-1 is an empty repo with no commits
-    path = self._DATA_ROOT.joinpath("git-1", "child")
-    g = git.fetch(path=path)
+    path = self._DATA_ROOT.joinpath("git-1")
+    g = git.fetch(path)
     self.assertEqual("", g.sha)
     self.assertEqual("", g.sha_abbrev)
     self.assertEqual("master", g.branch)
@@ -75,11 +76,15 @@ class TestGit(base.TestBase):
     self.assertFalse(g.is_dirty)
     self.assertEqual(0, g.distance)
     self.assertEqual(None, g.tag)
-    self.assertEqual(path.with_name(".git"), g.git_dir)
+    self.assertEqual(path.joinpath(".git"), g.git_dir)
+
+    # Child folder will fail
+    path = self._DATA_ROOT.joinpath("git-1", "child")
+    self.assertRaises(RuntimeError, git.fetch, path)
 
     # git-2 has a branch but is detached
-    path = self._DATA_ROOT.joinpath("git-2", ".gitignore")
-    g = git.fetch(path=path)
+    path = self._DATA_ROOT.joinpath("git-2")
+    g = git.fetch(path)
     self.assertEqual("b23ba426ab23f9bf525691e7550fc57afee48dd8", g.sha)
     self.assertEqual("b23ba42", g.sha_abbrev)
     self.assertEqual("feat/something", g.branch)
@@ -92,13 +97,13 @@ class TestGit(base.TestBase):
     # -dirty tag doesn't match REGEX
     self.assertRaises(ValueError,
                       git.fetch,
-                      path=path,
+                      path,
                       describe_args=["--tags", "--dirty"])
 
     # git-3 is detached from the master branch
     # Has a change in the index but reverted in the working tree
     path = self._DATA_ROOT.joinpath("git-3")
-    g = git.fetch(path=path, tag_prefix=None)
+    g = git.fetch(path, tag_prefix=None)
     self.assertEqual("f70f3f504000d80d45922c213e3cc3dba9bc8e2c", g.sha)
     self.assertEqual("f70f3f5", g.sha_abbrev)
     self.assertEqual("master", g.branch)
@@ -111,7 +116,7 @@ class TestGit(base.TestBase):
     # git-4 has no branches but is detached
     # Has a change in the index
     path = self._DATA_ROOT.joinpath("git-4")
-    g = git.fetch(path=path)
+    g = git.fetch(path)
     self.assertEqual("f70f3f504000d80d45922c213e3cc3dba9bc8e2c", g.sha)
     self.assertEqual("f70f3f5", g.sha_abbrev)
     self.assertEqual(None, g.branch)
@@ -125,7 +130,7 @@ class TestGit(base.TestBase):
     # Has a change in the index but reverted in the working tree
     path = self._DATA_ROOT.joinpath("git-5")
     start = time.perf_counter()
-    g = git.fetch(path=path, tag_prefix=None)
+    g = git.fetch(path, tag_prefix=None)
     elapsed_slow = time.perf_counter() - start
     self.assertEqual("f70f3f504000d80d45922c213e3cc3dba9bc8e2c", g.sha)
     self.assertEqual("f70f3f5", g.sha_abbrev)
@@ -138,7 +143,7 @@ class TestGit(base.TestBase):
 
     d = g.asdict()
     start = time.perf_counter()
-    g = git.fetch(path=path, tag_prefix=None, cache=d)
+    g = git.fetch(path, tag_prefix=None, cache=d)
     elapsed_cached = time.perf_counter() - start
     self.assertEqual("f70f3f504000d80d45922c213e3cc3dba9bc8e2c", g.sha)
     self.assertEqual("f70f3f5", g.sha_abbrev)
@@ -154,7 +159,7 @@ class TestGit(base.TestBase):
 
     # This won't use the partial cache
     d.pop("branch")
-    g = git.fetch(path=path, tag_prefix=None, cache=d)
+    g = git.fetch(path, tag_prefix=None, cache=d)
     self.assertEqual("f70f3f504000d80d45922c213e3cc3dba9bc8e2c", g.sha)
     self.assertEqual("f70f3f5", g.sha_abbrev)
     self.assertEqual("main", g.branch)
@@ -173,7 +178,7 @@ class TestGit(base.TestBase):
     d["tag"] = "v0.0.0"
     d["distance"] = 1
 
-    g = git.fetch(path=path, cache=d)
+    g = git.fetch(path, cache=d)
     self.assertEqual("2200dfa76743325303418980c363826ccfd7acbd", g.sha)
     self.assertEqual("2200dfa", g.sha_abbrev)
     self.assertEqual("master", g.branch)

@@ -74,10 +74,10 @@ class TestVersionHook(base.TestBase):
     calls.clear()
     with mock.patch("builtins.open", mock_open):
       from witch_ver import version_hook  # pylint: disable=import-outside-toplevel
-    check_file(False)
     self.assertEqual(2, len(calls))
     self.assertEqual("rb", calls[0]["args"][0])
     self.assertEqual("wb", calls[1]["args"][0])
+    check_file(False)
 
     # Cached, results, no file operations
     calls.clear()

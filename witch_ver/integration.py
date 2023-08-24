@@ -78,11 +78,11 @@ def use_witch_ver(dist: setuptools.Distribution, _: str,
 
   # Catch not being in a git repo anymore and return first cached version from
   # version.py
-  root = pathlib.Path(".").resolve()
+  repo_folder = pathlib.Path(".").resolve()
   try:
-    g = git.fetch(**config)
+    g = git.fetch(repo_folder, **config)
   except RuntimeError as e:
-    dst = root.joinpath(packages[0], "version.py")
+    dst = repo_folder.joinpath(packages[0], "version.py")
     if dst.exists():
       with open(dst, "r", encoding="utf-8") as file:
         buf = file.read()
@@ -131,11 +131,11 @@ def use_witch_ver(dist: setuptools.Distribution, _: str,
 
   for v in packages:
     # Copy version_hook
-    dst = root.joinpath(v, "version.py")
+    dst = repo_folder.joinpath(v, "version.py")
     _write_matching_newline(dst, version_py)
 
     # Install import directive to __init__
-    dst = root.joinpath(v, "__init__.py")
+    dst = repo_folder.joinpath(v, "__init__.py")
     with open(dst, "r", encoding="utf-8") as file:
       buf = file.read()
 

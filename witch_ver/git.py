@@ -205,7 +205,7 @@ class GitVer(SemVer):
     return self._tag_prefix
 
 
-def fetch(path: t.Union[str, bytes, os.PathLike] = None,
+def fetch(path: t.Union[str, bytes, os.PathLike],
           tag_prefix: str = "v",
           describe_args: t.List[str] = None,
           custom_str_func: t.Callable = None,
@@ -228,11 +228,7 @@ def fetch(path: t.Union[str, bytes, os.PathLike] = None,
     RuntimeError if a git command fails
     ValueError if git describe doesn't match REGEX
   """
-  if path is None:
-    path = "."
   path = pathlib.Path(path).resolve()
-  if path.is_file():
-    path = path.parent
 
   if describe_args is None:
     describe_args = ["--tags", "--always", "--long"]
@@ -244,9 +240,8 @@ def fetch(path: t.Union[str, bytes, os.PathLike] = None,
   def run_check(cmd, *args, **kwargs) -> t.Tuple[str, int]:
     stdout, returncode = run(cmd, *args, **kwargs)
     if stdout is None or returncode != 0:
-      raise RuntimeError(
-          f"Command failed {' '.join(cmd)}"
-      )  # pragma: no cover since all commands should fail gracefully
+      # All commands should fail gracefully, can't test
+      raise RuntimeError(f"Command failed {' '.join(cmd)}")  # pragma: no cover
     return stdout, returncode
 
   def default_branch() -> str:
@@ -261,6 +256,8 @@ def fetch(path: t.Union[str, bytes, os.PathLike] = None,
   if not git_dir.is_absolute():
     git_dir = path.joinpath(git_dir)
   git_dir = git_dir.resolve()
+  if git_dir.parent != path:
+    raise RuntimeError(f"Unexpected git repository '{git_dir}'")
 
   sha, returncode = run(["rev-parse", "HEAD"])
   if returncode != 0:
