@@ -1,7 +1,6 @@
 # coverage.py setup
 [run]
 command_line = tests discover -s tests -t . --locals
-; command_line = tests tests.test_version_hook
 branch = True
 source = witch_ver
 
