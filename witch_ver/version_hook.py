@@ -1,6 +1,9 @@
 """Module version information
 """
 
+import pathlib
+import re
+
 __all__ = ["__version__", "version_dict"]
 
 version_dict = {}
@@ -24,15 +27,16 @@ def _get_version() -> dict:
     return _semver
 
   try:
-    import re  # pylint: disable=import-outside-toplevel
-
     # yapf: disable since witch_ver overwrites without rerunning formatter
     config = {
         "custom_str_func": witch_ver.str_func_pep440
     }
     # yapf: enable
 
-    g = witch_ver.fetch(**config, cache=version_dict)
+    module_folder = pathlib.Path(__file__).parent.resolve()
+    repo_folder = module_folder.parent
+
+    g = witch_ver.fetch(repo_folder, cache=version_dict, **config)
     _semver = g.asdict(isoformat_date=True)
 
     # Overwrite this file with new version info

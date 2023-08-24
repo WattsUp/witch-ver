@@ -67,7 +67,10 @@ def _get_version() -> dict:
   try:
     config = {"custom_str_func": git.str_func_pep440}
 
-    g = git.fetch(**config, cache=version_dict)
+    module_folder = pathlib.Path(__file__).parent.resolve()
+    repo_folder = module_folder.parent
+
+    g = git.fetch(repo_folder, cache=version_dict, **config)
     _semver = g.asdict(isoformat_date=True)
 
     # Overwrite the static file with new version info
@@ -80,7 +83,7 @@ def _get_version() -> dict:
         items.append(f'    "{k}": {v}')
     new_file += ",\n".join(items)
     new_file += "\n}\n"
-    path = pathlib.Path(__file__).with_name("_version.py")
+    path = module_folder.joinpath("_version.py")
     _write_matching_newline(path, new_file)
     return _semver
   except RuntimeError:
