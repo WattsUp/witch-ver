@@ -205,7 +205,6 @@ class TestIntegration(base.TestBase):
             # Validate setup.py got proper version
             self.assertEqual("0.0.0+1.gd78b554", fake_stdout.getvalue().strip())
 
-            self.maxDiff = None
             with open(path_version, "r", encoding="utf-8") as file:
                 self.assertEqual(target_ver, file.read())
 
