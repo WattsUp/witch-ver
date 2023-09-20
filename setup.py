@@ -14,11 +14,11 @@ module_folder = "witch_ver"
 module_name = "witch-ver"
 
 with open("README.md", encoding="utf-8") as file:
-  longDescription = file.read()
+    longDescription = file.read()
 
 required = ["colorama"]
 extras_require = {"test": ["AutoDict", "coverage", "pylint"]}
-extras_require["dev"] = extras_require["test"] + ["toml", "yapf>=0.40.0"]
+extras_require["dev"] = extras_require["test"] + ["toml", "black", "isort"]
 
 setuptools.setup(
     name=module_name,
@@ -27,8 +27,7 @@ setuptools.setup(
     long_description=longDescription,
     long_description_content_type="text/markdown",
     license="MIT",
-    packages=setuptools.find_packages(
-        include=[module_folder, f"{module_folder}.*"]),
+    packages=setuptools.find_packages(include=[module_folder, f"{module_folder}.*"]),
     package_data={module_folder: []},
     install_requires=required,
     extras_require=extras_require,
@@ -57,4 +56,5 @@ setuptools.setup(
         "distutils.setup_keywords": [
             "use_witch_ver = witch_ver.integration:use_witch_ver"
         ]
-    })
+    },
+)

@@ -1,0 +1,17 @@
+{
+  "cSpell.words": [],
+  "[python]": {
+    "editor.defaultFormatter": "ms-python.black-formatter",
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.organizeImports": true
+    }
+  },
+  "isort.args": [
+    "--profile",
+    "black",
+    "--force-alphabetical-sort-within-sections",
+    "--float-to-top"
+  ],
+  "editor.tabSize": 4
+}
