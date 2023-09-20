@@ -225,7 +225,7 @@ no-docstring-rgx=(__.*__|main|test.*|.*test|.*Test)$
 
 # Minimum line length for functions/classes that require docstrings, shorter
 # ones are exempt.
-docstring-min-length=10
+docstring-min-length=0
 
 
 [TYPECHECK]
@@ -259,7 +259,7 @@ generated-members=
 [FORMAT]
 
 # Maximum number of characters on a single line.
-max-line-length=80
+max-line-length=88
 
 # TODO(https://github.com/PyCQA/pylint/issues/3352): Direct pylint to exempt
 # lines made too long by directives to pytype.
@@ -280,13 +280,13 @@ max-module-lines=99999
 # spaces.  Google's externaly-published style guide says 4, consistent with
 # PEP 8.  Here, we use 2 spaces, for conformity with many open-sourced Google
 # projects (like TensorFlow).
-indent-string='  '
+indent-string='    '
 
 # Number of spaces of indent required inside a hanging  or continued line.
 indent-after-paren=4
 
 # Expected format of line ending, e.g. empty (any line ending), LF or CRLF.
-expected-line-ending-format=
+expected-line-ending-format=LF
 
 
 [MISCELLANEOUS]
@@ -424,6 +424,6 @@ valid-metaclass-classmethod-first-arg=mcs
 
 # Exceptions that will emit a warning when being caught. Defaults to
 # "Exception"
-overgeneral-exceptions=StandardError,
-                       Exception,
-                       BaseException
+overgeneral-exceptions=builtins.StandardError,
+                       builtins.Exception,
+                       builtins.BaseException

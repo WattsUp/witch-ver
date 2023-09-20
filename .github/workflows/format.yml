@@ -1,4 +1,4 @@
-name: Pylint
+name: Format
 
 on:
   push:
@@ -13,7 +13,7 @@ on:
       - "**.md"
 
 jobs:
-  lint:
+  format:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: true
@@ -29,7 +29,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install pylint
+          python -m pip install black isort colorama
       - name: Lint
         run: |
-          python -m pylint witch_ver tests tools setup.py
+          python tools/format_all.py --check

@@ -83,10 +83,10 @@ python -m pylint witch_ver tests tools setup.py
 Code development of this project adheres to [Google Python Guide](https://google.github.io/styleguide/pyguide.html)
 
 ### Styling
-Use `yapf` to format files, based on Google's guide with the exception of indents being 2 spaces.
+Use `black` to format files, easiest to use the format_all script
 ```bash
 # To format all files, execute:
-yapf -ir .
+python tools/format_all.py
 ```
 
 ---
