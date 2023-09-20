@@ -108,7 +108,7 @@ def use_witch_ver(
         else:
             items.append(f'    "{k}": {v}')
     version_dict += ",\n".join(items)
-    version_dict += "\n}"
+    version_dict += ",\n}"
     buf = re.sub(r"version_dict = {.*?}", version_dict, buf, count=1, flags=re.S)
 
     # Save config to version_hook
@@ -128,8 +128,8 @@ def use_witch_ver(
         else:
             items.append(f'    "{k}": {v}')
     config_str += ",\n".join(items)
-    config_str += "\n}"
-    config_str = textwrap.indent(config_str, "    ")
+    config_str += ",\n}"
+    config_str = textwrap.indent(config_str, "        ")
     version_py = re.sub(r" *config = {.*?}", config_str, buf, count=1, flags=re.S)
 
     for v in packages:

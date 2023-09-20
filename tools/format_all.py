@@ -26,6 +26,7 @@ def main() -> None:
         if not path.is_dir():
             raise TypeError(f"{path} is not a folder")
         files.extend(path.rglob("**/*.py"))
+    files = [f for f in files if "data" not in str(f)]
 
     # Sort imports with isort
     args = [

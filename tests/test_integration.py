@@ -165,18 +165,18 @@ class TestIntegration(base.TestBase):
                 target_ver = file.read()
             target_version_dict = textwrap.dedent(
                 """\
-      version_dict = {
-          "tag": "v0.0.0",
-          "tag_prefix": "v",
-          "sha": "d78b554b4fc9ad5bdf844a4702c6a06d7ae5fdcb",
-          "sha_abbrev": "d78b554",
-          "branch": "master",
-          "date": "2022-07-29T13:08:23-07:00",
-          "dirty": False,
-          "distance": 1,
-          "pretty_str": "0.0.0+1.gd78b554",
-          "git_dir": None
-      }"""
+                version_dict = {
+                    "tag": "v0.0.0",
+                    "tag_prefix": "v",
+                    "sha": "d78b554b4fc9ad5bdf844a4702c6a06d7ae5fdcb",
+                    "sha_abbrev": "d78b554",
+                    "branch": "master",
+                    "date": "2022-07-29T13:08:23-07:00",
+                    "dirty": False,
+                    "distance": 1,
+                    "pretty_str": "0.0.0+1.gd78b554",
+                    "git_dir": None,
+                }"""
             )
             target_ver = re.sub(
                 r"version_dict = {.*?}",
@@ -190,13 +190,13 @@ class TestIntegration(base.TestBase):
             path_init = path_test.joinpath("hello", "__init__.py")
             target_init = textwrap.dedent(
                 '''\
-      """Hello-world
-      """
+                """Hello-world
+                """
 
-      from hello.version import __version__
+                from hello.version import __version__
 
-      from hello.world import MSG
-      '''
+                from hello.world import MSG
+                '''
             )
 
             with mock.patch("sys.stdout", new=io.StringIO()) as fake_stdout:
@@ -205,6 +205,7 @@ class TestIntegration(base.TestBase):
             # Validate setup.py got proper version
             self.assertEqual("0.0.0+1.gd78b554", fake_stdout.getvalue().strip())
 
+            self.maxDiff = None
             with open(path_version, "r", encoding="utf-8") as file:
                 self.assertEqual(target_ver, file.read())
 
@@ -249,7 +250,7 @@ class TestIntegration(base.TestBase):
           "dirty": False,
           "distance": 2,
           "pretty_str": "0.0.0+2.g93d84de",
-          "git_dir": None
+          "git_dir": None,
       }"""
             )
             target_ver = re.sub(

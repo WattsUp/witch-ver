@@ -27,9 +27,9 @@ def _get_version() -> dict:
         return _semver
 
     try:
-        # yapf: disable since witch_ver overwrites without rerunning formatter
-        config = {"custom_str_func": witch_ver.str_func_pep440}
-        # yapf: enable
+        config = {
+            "custom_str_func": witch_ver.str_func_pep440,
+        }
 
         module_folder = pathlib.Path(__file__).parent.resolve()
         repo_folder = module_folder.parent
