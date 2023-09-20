@@ -1,74 +1,75 @@
 """Test module runner
 """
 
-import typing as t
-
 import io
 import os
 import subprocess
+import typing as t
 from unittest import mock
 
-from witch_ver import runner
-
 from tests import base
+from witch_ver import runner
 
 
 class TestRunner(base.TestBase):
-  """Test runner module
-  """
+    """Test runner module"""
 
-  def test_run(self):
-    bad_cmd = "_"
+    def test_run(self):
+        bad_cmd = "_"
 
-    class MockData:
-      cmd_called: t.List[str] = None
-      cwd_called: t.Union[str, bytes, os.PathLike] = None
-      stdout_out: str = None
-      returncode_out: int = None
+        class MockData:
+            """Data class to store output from mocked commands"""
 
-    m = MockData()
+            cmd_called: t.List[str] = None
+            cwd_called: t.Union[str, bytes, os.PathLike] = None
+            stdout_out: str = None
+            returncode_out: int = None
 
-    def mock_run(cmd: t.List[str], **kwargs) -> subprocess.CompletedProcess:
-      m.cmd_called = cmd
-      m.cwd_called = kwargs.get("cwd", None)
+        m = MockData()
 
-      self.assertIsInstance(cmd, list)
-      if cmd[0] == bad_cmd:
-        raise OSError
-      for c in cmd:
-        self.assertIsInstance(c, str)
+        def mock_run(cmd: t.List[str], **kwargs) -> subprocess.CompletedProcess:
+            m.cmd_called = cmd
+            m.cwd_called = kwargs.get("cwd", None)
 
-      return subprocess.CompletedProcess(cmd, m.returncode_out,
-                                         m.stdout_out.encode(), b"")
+            self.assertIsInstance(cmd, list)
+            if cmd[0] == bad_cmd:
+                raise OSError
+            for c in cmd:
+                self.assertIsInstance(c, str)
 
-    original_run = runner.subprocess.run
-    try:
-      runner.subprocess.run = mock_run
+            return subprocess.CompletedProcess(
+                cmd, m.returncode_out, m.stdout_out.encode(), b""
+            )
 
-      cmd = "echo"
-      args = ["hello"]
-      m.stdout_out = "hi"
-      m.returncode_out = 0
+        original_run = runner.subprocess.run
+        try:
+            runner.subprocess.run = mock_run
 
-      stdout, returncode = runner.run(cmd, args)
-      self.assertEqual(m.stdout_out, stdout)
-      self.assertEqual(m.returncode_out, returncode)
-      self.assertEqual(None, m.cwd_called)
-      self.assertListEqual([cmd] + args, m.cmd_called)
+            cmd = "echo"
+            args = ["hello"]
+            m.stdout_out = "hi"
+            m.returncode_out = 0
 
-      cmd = bad_cmd
-      args = ["hello"]
-      m.stdout_out = "hi"
-      m.returncode_out = 0
+            stdout, returncode = runner.run(cmd, args)
+            self.assertEqual(m.stdout_out, stdout)
+            self.assertEqual(m.returncode_out, returncode)
+            self.assertEqual(None, m.cwd_called)
+            self.assertListEqual([cmd] + args, m.cmd_called)
 
-      with mock.patch("sys.stdout", new=io.StringIO()) as fake_stdout:
-        stdout, returncode = runner.run(cmd, args, cwd=self._TEST_ROOT)
-      self.assertEqual(None, stdout)
-      self.assertEqual(None, returncode)
-      self.assertEqual(self._TEST_ROOT, m.cwd_called)
-      self.assertListEqual([cmd] + args, m.cmd_called)
-      self.assertEqual(f"Failed to run '{bad_cmd} {' '.join(args)}'\n",
-                       fake_stdout.getvalue())
+            cmd = bad_cmd
+            args = ["hello"]
+            m.stdout_out = "hi"
+            m.returncode_out = 0
 
-    finally:
-      runner.subprocess.run = original_run
+            with mock.patch("sys.stdout", new=io.StringIO()) as fake_stdout:
+                stdout, returncode = runner.run(cmd, args, cwd=self._TEST_ROOT)
+            self.assertEqual(None, stdout)
+            self.assertEqual(None, returncode)
+            self.assertEqual(self._TEST_ROOT, m.cwd_called)
+            self.assertListEqual([cmd] + args, m.cmd_called)
+            self.assertEqual(
+                f"Failed to run '{bad_cmd} {' '.join(args)}'\n", fake_stdout.getvalue()
+            )
+
+        finally:
+            runner.subprocess.run = original_run

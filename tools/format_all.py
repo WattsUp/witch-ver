@@ -48,7 +48,6 @@ def main() -> None:
         "black",
         "-W",
         "4",
-        "--stdin-filename",
     ] + files
     if check:
         args.append("--check")
