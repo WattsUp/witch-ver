@@ -1,6 +1,8 @@
 # IDE files
 *.code-workspace
+.vs-code
 .venv
+.env
 
 # Build artifacts
 __pycache__

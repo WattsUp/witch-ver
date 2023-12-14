@@ -5,6 +5,8 @@ Have you ever asked yourself which version you're at? witch-ver can help.
 
 witch-ver automatically calculates the version of a git repo and adds the information when building.
 
+If you just want to integrate witch-ver into your project, head to [usage](#usage)
+
 ----
 ## Environment
 List of dependencies for package to run.
@@ -17,7 +19,6 @@ List of dependencies for package to run.
 * Test extensions, installed via `pip install witch-ver[test]`
   * AutoDict
   * coverage
-  * pylint
 
 ----
 ## Installation / Build / Deployment
@@ -33,62 +34,57 @@ python -m pip install .
 # For development, install as a link to repository such that code changes are used. And include testing packages
 git clone https://github.com/WattsUp/witch-ver
 cd witch-ver
-python -m pip install -e .[test]
+python -m pip install -e ".[dev]"
 ```
 
 ----
 ## Usage
-Explain how to use your project.
+To use witch-ver in your project, add two lines to the project configuration. Also should have some git tags.
 ```Python
-# TODO
+# setup.py
+setuptools.setup(
+    ...
+    use_witch_ver=True,
+    ...
+)
+```
+```toml
+# pyproject.toml
+[build-system]
+requires = [
+    ...
+    "witch-ver",
+    ...
+]
 ```
 ----
 ## Running Tests
 Make sure to install package with [testing extension](#optional)
+Unit tests
 ```bash
-# To run the automated tests, execute:
-python -m tests discover -s tests -t . --locals
-
-# To save the results to file, execute:
-python -m tests discover -s tests -t . --locals &> testing.log
-
-## The following is a synopsis of unittest main arguments ##
-# To run a singular test file, execute:
-python -m tests $path_to_test_file
-python -m tests tests.test_main
-
-# To run a singular test class, execute:
-python -m tests $path_to_test_file.$class
-python -m tests tests.test_main.TestMain
-
-# To run a singular test method, execute:
-python -m tests $path_to_test_file.$class.$method
-python -m tests tests.test_main.TestMain.test_parser
-
-# Multiple can be strung together
-python -m tests tests.test_main tests.test_writer
+> python -m test
 ```
+Coverage report
 ```bash
-# To run coverage and print the report with missing lines, execute:
-python -m coverage run && python -m coverage report -m
-
-# To run profiler, execute:
-python -m cProfile -s tottime -m tests discover -s tests -t . > profile.log
-
-# To run linting, execute:
-python -m pylint witch_ver tests tools setup.py
+> python -m coverage run && python -m coverage report
 ```
 ----
 ## Development
 Code development of this project adheres to [Google Python Guide](https://google.github.io/styleguide/pyguide.html)
 
-### Styling
-Use `black` to format files, easiest to use the format_all script
+Linters
 ```bash
-# To format all files, execute:
-python tools/format_all.py
+> ruff .
+> codespell .
 ```
-
+Formatters
+```bash
+> isort .
+> black .
+```
+### Tools
+- `formatters.sh` will run every formatter
+- `linters.sh` will run every linter
 ---
 ## Versioning
 Versioning of this projects adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and is implemented using git tags.  

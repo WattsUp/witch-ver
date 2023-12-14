@@ -1,2 +1,155 @@
 [build-system]
-requires = ["setuptools", "wheel"]
+requires = ["setuptools", "wheel", "witch-ver"]
+
+[tool.codespell]
+skip = "3rd-party,dist,*.pem,*.json"
+
+[tool.coverage.run]
+command_line = "-m tests discover -s tests -t . --locals"
+branch = true
+source = ["nummus"]
+omit = [
+]
+
+[tool.coverage.report]
+ignore_errors = true
+precision = 2
+show_missing = true
+fail_under = 100
+exclude_lines = [
+    "pragma: no cover", # Have to re-enable the standard pragma
+
+    # Don't complain about missing debug-only code:
+    "def __repr__",
+    "if self.debug",
+
+    # Don't complain if tests don't hit defensive assertion code:
+    "raise AssertionError",
+    "raise NotImplementedError",
+
+    # Don't complain if non-runnable code isn't run:
+    "if 0:",
+    "if False:",
+    "if __name__ == .__main__.:",
+
+    # Don't complain about the one win32 line
+    "if sys.platform == .win32.:",
+
+    # Don't complain about ImportErrors, unit tests mocks them
+    "except ImportError",
+
+    # Don't complain about missing typing hints
+    "if TYPE_CHECKING:",
+]
+
+[tool.isort]
+profile = "black"
+skip_gitignore = true
+float_to_top = true
+force_alphabetical_sort_within_sections = true
+
+[tool.ruff]
+target-version = "py310"
+select = [
+    "RUF",   # ruff
+    "F",     # pyflakes
+    "W",     # pycodestyle warnings
+    "E",     # pycodestyle errors
+    "I",     # isort
+    "N",     # pep8-naming
+    "D",     # pydocstyle
+    "UP",    # pyupgrade
+    "YTT",   # flake8-2020
+    "ANN",   # flake8-annotations
+    "ASYNC", # flask8-async
+    "S",     # flake8-bandit
+    "BLE",   # flake8-blind-except
+    "FBT",   # flake8-boolean-trap
+    "B",     # flake8-bugbear
+    "A",     # flake8-builtins
+    "COM",   # flake8-commas
+    "C4",    # flake8-comprehensions
+    "T10",   # flake8-debugger
+    "EM",    # flake8-errmsg
+    "EXE",   # flake8-executable
+    "FA",    # flake8-future-annotations
+    "ISC",   # flake8-implicit-str-concat
+    "ICN",   # flake8-import-conventions
+    "G",     # flake8-logging-format
+    "INP",   # flake8-no-pep420
+    "PIE",   # flake8-pie
+    #"T20",  # flake8-print TODO (WattsUp) Remove prints
+    "PYI",  # flake8-pyi
+    "Q",    # flake8-quotes
+    "RSE",  # flake8-raise
+    "RET",  # flake8-return
+    "SLF",  # flake8-self
+    "SLOT", # flake8-slots
+    "SIM",  # flake8-simplify
+    "TID",  # flake8-tidy-imports
+    "TCH",  # flake8-type-checking
+    "INT",  # flake8-gettext
+    "ARG",  # flake8-unused-argument
+    "PTH",  # flake8-use-pathlib
+    "TD",   # flake8-todos
+    "ERA",  # eradicate
+    "PGH",  # pygrep-hooks
+    "PL",   # pylint
+    "TRY",  # tryceratops
+    "FLY",  # flynt
+    "PERF", # perflint
+]
+
+ignore = [
+    "ANN101",  # missing type annotation for self
+    "ANN102",  # missing type annotation for cls
+    "I001",    # mismatch between ruff and isort
+    "TD003",   # issue links not required for TODOs
+    "PLR0911", # Too many return statements
+    "PLR0912", # Too many branches
+    "PLR0913", # Too many arguments
+    "PLR0915", # Too many statements
+]
+
+exclude = [
+    "migrations",
+    "__pycache__",
+    "manage.py",
+    "settings.py",
+    "env",
+    ".env",
+    "venv",
+    ".venv",
+]
+
+[tool.ruff.pydocstyle]
+convention = "google"
+
+
+[tool.ruff.per-file-ignores]
+"tests/*.py" = [
+    "D100", # Disable missing docstrings in tests
+    "D101",
+    "D102",
+    "D103",
+    "D104",
+    "D105",
+    "D106",
+    "D107",
+]
+"tools/*.py" = [
+    "INP001",  # Outside of a package
+    "PLR2004", # Allow magic values
+]
+
+[tool.ruff.flake8-annotations]
+suppress-dummy-args = true
+
+[tool.ruff.flake8-type-checking]
+runtime-evaluated-base-classes = [
+    "sqlalchemy.orm.DeclarativeBase",
+    "nummus.models.base.Base",
+]
+
+[tool.ruff.isort]
+required-imports = ["from __future__ import annotations"]
