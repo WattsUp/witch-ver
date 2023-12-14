@@ -1,5 +1,5 @@
-"""Integration into various automated tools
-"""
+"""Integration into various automated tools."""
+from __future__ import annotations
 
 import ast
 import inspect
@@ -7,10 +7,13 @@ import pathlib
 import re
 import textwrap
 import typing as t
-
-import setuptools
+from typing import TYPE_CHECKING
 
 from witch_ver import git
+
+if TYPE_CHECKING:
+    import setuptools
+
 
 # Boolean
 # Or a configuration
@@ -19,7 +22,7 @@ UseWitchVerValue = t.Union[bool, t.Dict[str, t.Any], t.Callable[[], t.Dict[str, 
 
 
 def _write_matching_newline(path: pathlib.Path, buf: str) -> None:
-    """Write buf to path, whilst matching existing newlines if path exists
+    """Write buf to path, whilst matching existing newlines if path exists.
 
     Args:
       path: Path to file to write
@@ -27,21 +30,23 @@ def _write_matching_newline(path: pathlib.Path, buf: str) -> None:
     """
     buf_b = buf.encode()
     if path.exists():
-        with open(path, "rb") as file:
+        with path.open("rb") as file:
             buf_b_existing = file.read()
             if b"\r\n" in buf_b_existing:
                 buf_b = buf_b.replace(b"\n", b"\r\n")
         if buf_b == buf_b_existing:
             # Don't write an identical file, preserves modification time
             return
-    with open(path, "wb") as file:
+    with path.open("wb") as file:
         file.write(buf_b)
 
 
 def use_witch_ver(
-    dist: setuptools.Distribution, _: str, value: UseWitchVerValue
+    dist: setuptools.Distribution,
+    _,
+    value: UseWitchVerValue,
 ) -> None:
-    """Entrypoint for setuptools
+    """Entrypoint for setuptools.
 
     Args:
       dist: setuptools distribution
@@ -49,18 +54,19 @@ def use_witch_ver(
       value: True, or a dictionary (or callable that produces a dictionary) of
         configuration properties
     """
-    config = {"custom_str_func": git.str_func_pep440}
+    config: t.Dict[str, t.Any] = {"custom_str_func": git.str_func_pep440}
     if not value:
         return
-    elif callable(value):
+    if callable(value):
         config.update(value())
     elif isinstance(value, dict):
         config.update(value)
     elif not isinstance(value, bool):
-        raise ValueError(
-            "Expected boolean, a dictionary, or a function to produce "
-            f"a dictionary. Got: {type(value)}"
+        msg = (
+            "Expected boolean, a dictionary, or a function to produce a dictionary. "
+            f"Got: {type(value)}"
         )
+        raise TypeError(msg)
 
     # custom_str_func may be a discrete function or a member of git
     f = config["custom_str_func"]
@@ -68,35 +74,38 @@ def use_witch_ver(
         # Expect to be a function of witch_ver.git
         config["custom_str_func"] = getattr(git, f)
     elif not callable(f):
-        raise TypeError(
-            "custom_str_func is not callable nor a member of " "witch_ver.git"
-        )
+        msg = "custom_str_func is not callable nor a member of witch_ver.git"
+        raise TypeError(msg)
 
     packages = []
     for v in dist.packages:
         v: str
-        v = v.split(".", maxsplit=1)[0]
-        if v not in packages:
-            packages.append(v)
+        package = v.split(".", maxsplit=1)[0]
+        if package not in packages:
+            packages.append(package)
 
     # Catch not being in a git repo anymore and return first cached version from
     # version.py
-    repo_folder = pathlib.Path(".").resolve()
+    repo_folder = pathlib.Path().resolve()
     try:
-        g = git.fetch(repo_folder, **config)
+        g = git.fetch(repo_folder, **config)  # type: ignore[attr-defined]
     except RuntimeError as e:
         dst = repo_folder.joinpath(packages[0], "version.py")
         if dst.exists():
-            with open(dst, "r", encoding="utf-8") as file:
+            with dst.open(encoding="utf-8") as file:
                 buf = file.read()
-                buf = re.search(r"version_dict = ({.*?})", buf, flags=re.S)[1]
-                cache = ast.literal_eval(buf)
+                buf = re.search(r"version_dict = ({.*?})", buf, flags=re.S)
+                if buf is None:
+                    msg = "Regex found to find version_dict"
+                    raise ValueError(msg) from e
+                cache = ast.literal_eval(buf[0])
                 g = git.GitVer(**cache)
         else:
-            raise RuntimeError("Unable to fetch version from git nor cache") from e
+            msg = "Unable to fetch version from git nor cache"
+            raise RuntimeError(msg) from e
 
     src = pathlib.Path(__file__).with_name("version_hook.py").resolve()
-    with open(src, "r", encoding="utf-8") as file:
+    with src.open(encoding="utf-8") as file:
         buf = file.read()
 
     # Generate initial cache
@@ -139,7 +148,7 @@ def use_witch_ver(
 
         # Install import directive to __init__
         dst = repo_folder.joinpath(v, "__init__.py")
-        with open(dst, "r", encoding="utf-8") as file:
+        with dst.open(encoding="utf-8") as file:
             buf = file.read()
 
         import_str = f"from {v}.version import __version__\n"
@@ -149,12 +158,12 @@ def use_witch_ver(
         # Find the first import of the module (EOF if not present)
         # and append import_str
         header = re.search(
-            rf'^"""(?:.|\n)*?"""(?:(?!(?:from {v}|import {v})).*\n|\n)*', buf
+            rf'^"""(?:.|\n)*?"""(?:(?!(?:from {v}|import {v})).*\n|\n)*',
+            buf,
         )
         if header is None:
             buf = buf + "\n" + import_str
         else:
-            header: re.Match
             buf = buf[: header.end()] + import_str + "\n" + buf[header.end() :]
 
         _write_matching_newline(dst, buf)
