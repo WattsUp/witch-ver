@@ -21,12 +21,11 @@ with Path("README.md").open(encoding="utf-8") as file:
 
 required = ["colorama"]
 extras_require = {
-    "test": ["AutoDict", "coverage", "time-machine"],
+    "test": ["AutoDict", "coverage", "time-machine", "tomli"],
 }
 extras_require["dev"] = extras_require["test"] + [
     "ruff",
     "codespell",
-    "tomli",
     "black",
     "isort",
     "pre-commit",
