@@ -1,5 +1,5 @@
 # witch-ver
-[![Unit Test][unittest-image]][unittest-url] [![Pylint][pylint-image]][pylint-url] [![Coverage][coverage-image]][coverage-url] [![Latest Version][pypi-image]][pypi-url]
+[![Unit Test][unittest-image]][unittest-url] [![Static Analysis][static-analysis-image]][static-analysis-url] [![Coverage][coverage-image]][coverage-url] [![Latest Version][pypi-image]][pypi-url]
 
 Have you ever asked yourself which version you're at? witch-ver can help.
 
@@ -93,7 +93,7 @@ Versioning of this projects adheres to [Semantic Versioning](https://semver.org/
 [pypi-url]: https://pypi.python.org/pypi/witch-ver/
 [unittest-image]: https://github.com/WattsUp/witch-ver/actions/workflows/test.yml/badge.svg
 [unittest-url]: https://github.com/WattsUp/witch-ver/actions/workflows/test.yml
-[pylint-image]: https://github.com/WattsUp/witch-ver/actions/workflows/lint.yml/badge.svg
-[pylint-url]: https://github.com/WattsUp/witch-ver/actions/workflows/lint.yml
+[static-analysis-image]: https://github.com/WattsUp/witch-ver/actions/workflows/static-analysis.yml/badge.svg
+[static-analysis-url]: https://github.com/WattsUp/witch-ver/actions/workflows/static-analysis.yml
 [coverage-image]: https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/WattsUp/36d9705addcd44fb0fccec1d23dc1338/raw/witch-ver__heads_master.json
 [coverage-url]: https://github.com/WattsUp/witch-ver/actions/workflows/coverage.yml

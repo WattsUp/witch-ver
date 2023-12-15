@@ -13,12 +13,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: [3.9]
+        python-version: ["3.9"]
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
@@ -27,7 +27,7 @@ jobs:
           python -m pip install -e .[test]
       - name: Test
         run: |
-          python -m coverage run &> testing.log
+          python -m coverage run
           if python -m coverage json ; then
             echo "COLOR=green" >> $GITHUB_ENV
           else
@@ -45,17 +45,16 @@ jobs:
           echo $BRANCH_NAME
           echo "BRANCH=$(echo ${BRANCH_NAME})" >> $GITHUB_ENV
       - name: Upload test configuration
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         if: always()
         with:
           name: testing.${{ matrix.python-version }}
           path: |
             testing.log
-            test_log.json
             coverage.json
             .coverage
       - name: Create badge
-        uses: schneegans/dynamic-badges-action@v1.0.0
+        uses: schneegans/dynamic-badges-action@v1.6.0
         with:
           auth: ${{ secrets.GIST_SECRET }}
           gistID: 36d9705addcd44fb0fccec1d23dc1338
