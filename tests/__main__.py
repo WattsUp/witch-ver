@@ -12,7 +12,8 @@ from witch_ver.version import __version__, version_dict
 def pre_tests() -> None:
     """Things to run before all tests."""
     print(f"Testing version {__version__}")
-    TEST_LOG.unlink(missing_ok=True)
+    if TEST_LOG.exists():
+        TEST_LOG.unlink()
     with autodict.JSONAutoDict(str(TEST_LOG)) as d:
         d["version"] = version_dict
         d["classes"] = {}
