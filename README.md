@@ -14,11 +14,14 @@ List of dependencies for package to run.
 * git
 * python modules, installed via `pip install witch-ver`
   * colorama
+  * setuptools
 
 ### Optional
 * Test extensions, installed via `pip install witch-ver[test]`
   * AutoDict
   * coverage
+  * time-machine
+  * tomli
 
 ----
 ## Installation / Build / Deployment

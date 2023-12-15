@@ -19,7 +19,7 @@ module_name = "witch-ver"
 with Path("README.md").open(encoding="utf-8") as file:
     long_description = file.read()
 
-required = ["colorama"]
+required = ["colorama", "setuptools"]
 extras_require = {
     "test": ["AutoDict", "coverage", "time-machine", "tomli"],
 }
