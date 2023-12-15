@@ -17,12 +17,12 @@ def run(
     """Run a command and capture its output and return code.
 
     Args:
-      cmd: Command to run
-      args: Arguments to add to command
-      cwd: Current working directory to run the command from
+        cmd: Command to run
+        args: Arguments to add to command
+        cwd: Current working directory to run the command from
 
     Returns:
-      stdout, return code
+        stdout, return code
     """
     cmd_l = [cmd, *args]
     try:

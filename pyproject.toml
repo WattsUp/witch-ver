@@ -7,8 +7,9 @@ skip = "3rd-party,dist,*.pem,*.json"
 [tool.coverage.run]
 command_line = "-m tests discover -s tests -t . --locals"
 branch = true
-source = ["nummus"]
+source = ["witch_ver"]
 omit = [
+  "witch_ver/version_hook.py", # Due to importlib it is missed by coverage
 ]
 
 [tool.coverage.report]
@@ -146,12 +147,6 @@ convention = "google"
 
 [tool.ruff.flake8-annotations]
 suppress-dummy-args = true
-
-[tool.ruff.flake8-type-checking]
-runtime-evaluated-base-classes = [
-    "sqlalchemy.orm.DeclarativeBase",
-    "nummus.models.base.Base",
-]
 
 [tool.ruff.isort]
 required-imports = ["from __future__ import annotations"]

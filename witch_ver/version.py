@@ -6,7 +6,7 @@ Especially for self-versioning due to importing and gitignore stuff...
 from __future__ import annotations
 
 import datetime
-import pathlib
+from pathlib import Path
 
 __all__ = ["__version__"]
 
@@ -31,12 +31,12 @@ except ImportError:
 _semver = {}
 
 
-def _write_matching_newline(path: pathlib.Path, buf: str) -> None:
+def _write_matching_newline(path: Path, buf: str) -> None:
     """Write buf to path, whilst matching existing newlines if path exists.
 
     Args:
-      path: Path to file to write
-      buf: File contents to write
+        path: Path to file to write
+        buf: File contents to write
     """
     buf_b = buf.encode()
     if path.exists():
@@ -55,7 +55,7 @@ def _get_version() -> dict:
     """Get latest version.
 
     Returns:
-      Git object
+        Git object
     """
     if _semver:
         return _semver
@@ -67,7 +67,7 @@ def _get_version() -> dict:
 
     config = {"custom_str_func": git.str_func_pep440}
 
-    module_folder = pathlib.Path(__file__).parent.resolve()
+    module_folder = Path(__file__).parent.resolve()
     repo_folder = module_folder.parent
 
     try:

@@ -1,6 +1,5 @@
-"""Testing module
-"""
+from __future__ import annotations
 
-import pathlib
+from pathlib import Path
 
-TEST_LOG = pathlib.Path("test_log.json")
+TEST_LOG = Path("test_log.json").resolve()

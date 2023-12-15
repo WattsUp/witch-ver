@@ -37,16 +37,16 @@ class SemVer:
         Must provide a string to parse or at least major, minor, & patch.
 
         Args:
-          string: String to parse
-          major: Major revision number (required if s is None)
-          minor: Minor revision number (required if s is None)
-          patch: Patch revision number (required if s is None)
-          prerelease: Prerelease tag or a list of them (optional)
-          build: Build metadata tag or a list of them (optional)
+            string: String to parse
+            major: Major revision number (required if s is None)
+            minor: Minor revision number (required if s is None)
+            patch: Patch revision number (required if s is None)
+            prerelease: Prerelease tag or a list of them (optional)
+            build: Build metadata tag or a list of them (optional)
 
         Raises:
-          TypeError if s is None and major, minor, or patch is missing
-          ValueError if any any values are improper format
+            TypeError if s is None and major, minor, or patch is missing
+            ValueError if any any values are improper format
         """
         self._major = 0
         self._minor = 0
@@ -110,10 +110,10 @@ class SemVer:
         Tests strictly that all parts match.
 
         Args:
-          obj: Of type SemVer or a string
+            obj: Of type SemVer or a string
 
         Returns:
-          True if all parts are equal, False otherwise
+            True if all parts are equal, False otherwise
         """
         if isinstance(obj, str):
             obj = SemVer(obj)
@@ -139,10 +139,10 @@ class SemVer:
         See https://semver.org/#spec-item-11 for precedence
 
         Args:
-          obj: Of type SemVer or a string
+            obj: Of type SemVer or a string
 
         Returns:
-          True if all parts are equal, False otherwise
+            True if all parts are equal, False otherwise
         """
         if isinstance(obj, str):
             obj = SemVer(obj)

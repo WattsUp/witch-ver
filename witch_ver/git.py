@@ -23,8 +23,8 @@ class GitVer(SemVer):
 
     def __init__(
         self,
-        tag_prefix: str = "v",
         *_,
+        tag_prefix: t.Union[str, None] = "v",
         dirty_in_pre: t.Union[bool, None] = True,
         distance_in_pre: t.Union[bool, None] = True,
         sha_in_pre: t.Union[bool, None] = None,
@@ -76,7 +76,8 @@ class GitVer(SemVer):
         self._tag_prefix = tag_prefix
         self._git_dir = git_dir
 
-        if date is not None and date.tzinfo is None:
+        # git always returns timezone
+        if date is not None and date.tzinfo is None:  # pragma: no cover
             msg = "Date timezone must not be None"
             raise ValueError(msg)
 
@@ -112,7 +113,7 @@ class GitVer(SemVer):
                 self.append_build(f"g{sha_abbrev}")
 
         if date is not None:
-            s = date.strftime("%Y%m%dT%H%M%SZ")
+            s = date.astimezone(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
             if date_in_pre:
                 self.append_prerelease(s)
             elif date_in_pre is False:
@@ -216,7 +217,7 @@ class GitVer(SemVer):
         return self._tag
 
     @property
-    def tag_prefix(self) -> str:
+    def tag_prefix(self) -> t.Union[str, None]:
         """Prefix for git tags describing version.
 
         i.e. "v" for v0.0.0 or "ver" for ver0.0.0
@@ -226,7 +227,7 @@ class GitVer(SemVer):
 
 def fetch(
     path: t.Union[str, os.PathLike],
-    tag_prefix: str = "v",
+    tag_prefix: t.Union[str, None] = "v",
     describe_args: t.Union[t.List[str], None] = None,
     custom_str_func: t.Union[t.Callable[[GitVer], str], None] = None,
     cache: t.Union[t.Dict[str, t.Any], None] = None,
@@ -235,19 +236,19 @@ def fetch(
     """Run git commands to fetch current repository status.
 
     Args:
-      path: Path to repository folder (to run commands from), None will use cwd()
-      tag_prefix: Prefix for git tags describing version (to filter)
-      describe_args: Arguments used for git describe, None will use default:
-        --tags --always --long --match {tag_prefix}*
-      custom_str_func: Custom format function for str(Git) which takes a single
-        argument self. None will use str(SemVer) and tags included as follows.
-      cache: Cached dict version of a GitVer, if SHAs are identical, only update
-        dirtiness, else fetch all
-      kwargs: Other arguments passed to GitVer.__init__
+        path: Path to repository folder (to run commands from), None will use cwd()
+        tag_prefix: Prefix for git tags describing version (to filter)
+        describe_args: Arguments used for git describe, None will use default:
+            --tags --always --long --match {tag_prefix}*
+        custom_str_func: Custom format function for str(Git) which takes a single
+            argument self. None will use str(SemVer) and tags included as follows.
+        cache: Cached dict version of a GitVer, if SHAs are identical, only update
+            dirtiness, else fetch all
+        kwargs: Other arguments passed to GitVer.__init__
 
     Raises:
-      RuntimeError if a git command fails
-      ValueError if git describe doesn't match REGEX
+        RuntimeError if a git command fails
+        ValueError if git describe doesn't match REGEX
     """
     path = Path(path).resolve()
 
@@ -406,15 +407,15 @@ def str_func_pep440(g: GitVer) -> str:
     0+untagged[.dirty]
 
     Args:
-      g: Git version information
+        g: Git version information
 
     Returns:
-      Formatted string
+        Formatted string
     """
     buf = g.tag
     if buf is None:
         buf = "0+untagged"
-    elif buf.startswith(g.tag_prefix):
+    elif g.tag_prefix and buf.startswith(g.tag_prefix):
         buf = buf[len(g.tag_prefix) :]
 
     if g.distance == 0 and not g.is_dirty:
@@ -438,10 +439,10 @@ def str_func_git_describe(g: GitVer) -> str:
     {tag_prefix}0.0.0-untagged-0-g[-dirty]
 
     Args:
-      g: Git version information
+        g: Git version information
 
     Returns:
-      Formatted string
+        Formatted string
     """
     if g.tag is not None and g.distance == 0:
         if g.is_dirty:
@@ -460,10 +461,10 @@ def str_func_git_describe_long(g: GitVer) -> str:
     {tag_prefix}0.0.0-untagged-0-g[-dirty]
 
     Args:
-      g: Git version information
+        g: Git version information
 
     Returns:
-      Formatted string
+        Formatted string
     """
     if g.tag is None:
         buf = (

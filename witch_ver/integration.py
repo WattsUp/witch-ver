@@ -25,8 +25,8 @@ def _write_matching_newline(path: pathlib.Path, buf: str) -> None:
     """Write buf to path, whilst matching existing newlines if path exists.
 
     Args:
-      path: Path to file to write
-      buf: File contents to write
+        path: Path to file to write
+        buf: File contents to write
     """
     buf_b = buf.encode()
     if path.exists():
@@ -49,10 +49,10 @@ def use_witch_ver(
     """Entrypoint for setuptools.
 
     Args:
-      dist: setuptools distribution
-      keyword: Keyword used in entrypoint
-      value: True, or a dictionary (or callable that produces a dictionary) of
-        configuration properties
+        dist: setuptools distribution
+        keyword: Keyword used in entrypoint
+        value: True, or a dictionary (or callable that produces a dictionary) of
+            configuration properties
     """
     config: t.Dict[str, t.Any] = {"custom_str_func": git.str_func_pep440}
     if not value:
@@ -95,10 +95,11 @@ def use_witch_ver(
             with dst.open(encoding="utf-8") as file:
                 buf = file.read()
                 buf = re.search(r"version_dict = ({.*?})", buf, flags=re.S)
-                if buf is None:
+                if buf is None:  # pragma: no cover
+                    # Don't need coverage on debug code
                     msg = "Regex found to find version_dict"
                     raise ValueError(msg) from e
-                cache = ast.literal_eval(buf[0])
+                cache = ast.literal_eval(buf[1])
                 g = git.GitVer(**cache)
         else:
             msg = "Unable to fetch version from git nor cache"
@@ -138,7 +139,7 @@ def use_witch_ver(
             items.append(f'    "{k}": {v}')
     config_str += ",\n".join(items)
     config_str += ",\n}"
-    config_str = textwrap.indent(config_str, "        ")
+    config_str = textwrap.indent(config_str, "    ")
     version_py = re.sub(r" *config = {.*?}", config_str, buf, count=1, flags=re.S)
 
     for v in packages:

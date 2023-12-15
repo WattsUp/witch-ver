@@ -16,7 +16,7 @@ def _get_version() -> dict:
     """Get latest version.
 
     Returns:
-      Git object
+        Git object
     """
     if _semver:
         return _semver

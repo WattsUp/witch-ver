@@ -20,7 +20,9 @@ with Path("README.md").open(encoding="utf-8") as file:
     long_description = file.read()
 
 required = ["colorama"]
-extras_require = {"test": ["AutoDict", "coverage"]}
+extras_require = {
+    "test": ["AutoDict", "coverage", "time-machine"],
+}
 extras_require["dev"] = extras_require["test"] + [
     "ruff",
     "codespell",

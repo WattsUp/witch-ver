@@ -1,7 +1,5 @@
-"""Test module semver
-"""
+from __future__ import annotations
 
-import random
 import string
 
 from tests import base
@@ -9,12 +7,10 @@ from witch_ver import semver
 
 
 class TestSemVer(base.TestBase):
-    """Test SemVer class"""
-
-    def test_init(self):
-        major = random.randint(0, 100)
-        minor = random.randint(0, 100)
-        patch = random.randint(0, 100)
+    def test_init(self) -> None:
+        major = self.random_int(0, 100)
+        minor = self.random_int(0, 100)
+        patch = self.random_int(0, 100)
 
         self.assertRaises(TypeError, semver.SemVer)
         self.assertRaises(TypeError, semver.SemVer, major=major, minor=minor)
@@ -22,50 +18,50 @@ class TestSemVer(base.TestBase):
         self.assertRaises(TypeError, semver.SemVer, major=major, patch=patch)
 
         v = semver.SemVer(major=major, minor=minor, patch=patch)
-        self.assertEqual(major, v.major)
-        self.assertEqual(minor, v.minor)
-        self.assertEqual(patch, v.patch)
-        self.assertListEqual([], v.prerelease_list)
-        self.assertListEqual([], v.build_list)
+        self.assertEqual(v.major, major)
+        self.assertEqual(v.minor, minor)
+        self.assertEqual(v.patch, patch)
+        self.assertEqual(v.prerelease_list, [])
+        self.assertEqual(v.build_list, [])
 
         s = f"{major}.{minor}"
         self.assertRaises(ValueError, semver.SemVer, string=s)
 
         s = f"{major}.{minor}.{patch}"
         v = semver.SemVer(string=s)
-        self.assertEqual(major, v.major)
-        self.assertEqual(minor, v.minor)
-        self.assertEqual(patch, v.patch)
-        self.assertListEqual([], v.prerelease_list)
-        self.assertListEqual([], v.build_list)
+        self.assertEqual(v.major, major)
+        self.assertEqual(v.minor, minor)
+        self.assertEqual(v.patch, patch)
+        self.assertEqual(v.prerelease_list, [])
+        self.assertEqual(v.build_list, [])
 
         ###### Prerelease tagging #####
 
-        prerelease = str(random.randint(0, 1000))
+        prerelease = str(self.random_int(0, 1000))
 
         v = semver.SemVer(major=major, minor=minor, patch=patch, prerelease=prerelease)
-        self.assertEqual(major, v.major)
-        self.assertEqual(minor, v.minor)
-        self.assertEqual(patch, v.patch)
-        self.assertEqual(prerelease, v.prerelease)
-        self.assertListEqual([], v.build_list)
+        self.assertEqual(v.major, major)
+        self.assertEqual(v.minor, minor)
+        self.assertEqual(v.patch, patch)
+        self.assertEqual(v.prerelease, prerelease)
+        self.assertEqual(v.build_list, [])
 
-        prerelease = f"{random.getrandbits(64):X}-" + string.ascii_letters
+        prerelease = f"{self.random_sha()}-{string.ascii_letters}"
 
         v = semver.SemVer(major=major, minor=minor, patch=patch, prerelease=prerelease)
-        self.assertEqual(major, v.major)
-        self.assertEqual(minor, v.minor)
-        self.assertEqual(patch, v.patch)
-        self.assertEqual(prerelease, v.prerelease)
-        self.assertListEqual([], v.build_list)
+        self.assertEqual(v.major, major)
+        self.assertEqual(v.minor, minor)
+        self.assertEqual(v.patch, patch)
+        self.assertEqual(v.prerelease, prerelease)
+        self.assertEqual(v.build_list, [])
 
         s = f"{major}.{minor}.{patch}-{prerelease}"
         v = semver.SemVer(string=s)
-        self.assertEqual(major, v.major)
-        self.assertEqual(minor, v.minor)
-        self.assertEqual(patch, v.patch)
-        self.assertEqual(prerelease, v.prerelease)
-        self.assertListEqual([], v.build_list)
+        self.assertEqual(v.major, major)
+        self.assertEqual(v.minor, minor)
+        self.assertEqual(v.patch, patch)
+        self.assertEqual(v.prerelease, prerelease)
+        self.assertEqual(v.build_list, [])
 
         s = f"{major}.{minor}.{patch}-"
         self.assertRaises(ValueError, semver.SemVer, string=s)
@@ -98,39 +94,42 @@ class TestSemVer(base.TestBase):
             patch=patch,
             prerelease=[prerelease[0], ".".join(prerelease[1:])],
         )
-        self.assertEqual(major, v.major)
-        self.assertEqual(minor, v.minor)
-        self.assertEqual(patch, v.patch)
-        self.assertListEqual(prerelease, v.prerelease_list)
-        self.assertListEqual([], v.build_list)
+        self.assertEqual(v.major, major)
+        self.assertEqual(v.minor, minor)
+        self.assertEqual(v.patch, patch)
+        self.assertEqual(v.prerelease_list, prerelease)
+        self.assertEqual(v.build_list, [])
 
         v = semver.SemVer(
-            major=major, minor=minor, patch=patch, prerelease=".".join(prerelease)
+            major=major,
+            minor=minor,
+            patch=patch,
+            prerelease=".".join(prerelease),
         )
-        self.assertEqual(major, v.major)
-        self.assertEqual(minor, v.minor)
-        self.assertEqual(patch, v.patch)
-        self.assertListEqual(prerelease, v.prerelease_list)
-        self.assertListEqual([], v.build_list)
+        self.assertEqual(v.major, major)
+        self.assertEqual(v.minor, minor)
+        self.assertEqual(v.patch, patch)
+        self.assertEqual(v.prerelease_list, prerelease)
+        self.assertEqual(v.build_list, [])
 
         ###### Build metadata tagging #####
 
-        build = f"{random.getrandbits(64):X}-" + string.ascii_letters
+        build = f"{self.random_sha()}-{string.ascii_letters}"
 
         v = semver.SemVer(major=major, minor=minor, patch=patch, build=build)
-        self.assertEqual(major, v.major)
-        self.assertEqual(minor, v.minor)
-        self.assertEqual(patch, v.patch)
-        self.assertListEqual([], v.prerelease_list)
-        self.assertEqual(build, v.build)
+        self.assertEqual(v.major, major)
+        self.assertEqual(v.minor, minor)
+        self.assertEqual(v.patch, patch)
+        self.assertEqual(v.prerelease_list, [])
+        self.assertEqual(v.build, build)
 
         s = f"{major}.{minor}.{patch}+{build}"
         v = semver.SemVer(string=s)
-        self.assertEqual(major, v.major)
-        self.assertEqual(minor, v.minor)
-        self.assertEqual(patch, v.patch)
-        self.assertListEqual([], v.prerelease_list)
-        self.assertEqual(build, v.build)
+        self.assertEqual(v.major, major)
+        self.assertEqual(v.minor, minor)
+        self.assertEqual(v.patch, patch)
+        self.assertEqual(v.prerelease_list, [])
+        self.assertEqual(v.build, build)
 
         s = f"{major}.{minor}.{patch}+"
         self.assertRaises(ValueError, semver.SemVer, string=s)
@@ -158,20 +157,23 @@ class TestSemVer(base.TestBase):
         build = [build, "beta", "RC1", "metadata-here-123"]
 
         v = semver.SemVer(
-            major=major, minor=minor, patch=patch, build=[build[0], ".".join(build[1:])]
+            major=major,
+            minor=minor,
+            patch=patch,
+            build=[build[0], ".".join(build[1:])],
         )
-        self.assertEqual(major, v.major)
-        self.assertEqual(minor, v.minor)
-        self.assertEqual(patch, v.patch)
-        self.assertListEqual([], v.prerelease_list)
-        self.assertListEqual(build, v.build_list)
+        self.assertEqual(v.major, major)
+        self.assertEqual(v.minor, minor)
+        self.assertEqual(v.patch, patch)
+        self.assertEqual(v.prerelease_list, [])
+        self.assertEqual(v.build_list, build)
 
         v = semver.SemVer(major=major, minor=minor, patch=patch, build=".".join(build))
-        self.assertEqual(major, v.major)
-        self.assertEqual(minor, v.minor)
-        self.assertEqual(patch, v.patch)
-        self.assertListEqual([], v.prerelease_list)
-        self.assertListEqual(build, v.build_list)
+        self.assertEqual(v.major, major)
+        self.assertEqual(v.minor, minor)
+        self.assertEqual(v.patch, patch)
+        self.assertEqual(v.prerelease_list, [])
+        self.assertEqual(v.build_list, build)
 
         ###### Both tagging #####
 
@@ -182,21 +184,25 @@ class TestSemVer(base.TestBase):
             prerelease=".".join(prerelease),
             build=".".join(build),
         )
-        self.assertEqual(major, v.major)
-        self.assertEqual(minor, v.minor)
-        self.assertEqual(patch, v.patch)
-        self.assertListEqual(prerelease, v.prerelease_list)
-        self.assertListEqual(build, v.build_list)
+        self.assertEqual(v.major, major)
+        self.assertEqual(v.minor, minor)
+        self.assertEqual(v.patch, patch)
+        self.assertEqual(v.prerelease_list, prerelease)
+        self.assertEqual(v.build_list, build)
 
-    def test_equality(self):
-        major = random.randint(0, 100)
-        minor = random.randint(0, 100)
-        patch = random.randint(0, 100)
-        prerelease = f"{random.getrandbits(64):X}.alpha"
-        build = f"{random.getrandbits(64):X}.2022"
+    def test_equality(self) -> None:
+        major = self.random_int(0, 100)
+        minor = self.random_int(0, 100)
+        patch = self.random_int(0, 100)
+        prerelease = f"{self.random_sha()}.alpha"
+        build = f"{self.random_sha()}.2022"
 
         v = semver.SemVer(
-            major=major, minor=minor, patch=patch, prerelease=prerelease, build=build
+            major=major,
+            minor=minor,
+            patch=patch,
+            prerelease=prerelease,
+            build=build,
         )
 
         self.assertRaises(TypeError, v.__eq__, None)
@@ -228,7 +234,7 @@ class TestSemVer(base.TestBase):
         s = f"1{major}.{minor}.{patch}"
         self.assertNotEqual(v, semver.SemVer(s))
 
-    def test_compare(self):
+    def test_compare(self) -> None:
         v = semver.SemVer("2.1.1")
 
         self.assertRaises(TypeError, v.__gt__, None)
@@ -251,12 +257,12 @@ class TestSemVer(base.TestBase):
 
         self.assertLess(v, "2.1.1-beta.extra")
 
-    def test_str(self):
-        major = random.randint(0, 100)
-        minor = random.randint(0, 100)
-        patch = random.randint(0, 100)
-        prerelease = f"{random.getrandbits(64):X}.alpha"
-        build = f"{random.getrandbits(64):X}.2022"
+    def test_str(self) -> None:
+        major = self.random_int(0, 100)
+        minor = self.random_int(0, 100)
+        patch = self.random_int(0, 100)
+        prerelease = f"{self.random_sha()}.alpha"
+        build = f"{self.random_sha()}.2022"
 
         s = f"{major}.{minor}.{patch}-{prerelease}+{build}"
 
@@ -267,39 +273,39 @@ class TestSemVer(base.TestBase):
         r = f"<witch_ver.semver.SemVer '{s}'>"
         self.assertEqual(repr(v), r)
 
-    def test_bump(self):
-        major = random.randint(0, 100)
-        minor = random.randint(0, 100)
-        patch = random.randint(0, 100)
-        prerelease = f"{random.getrandbits(64):X}.alpha"
-        build = f"{random.getrandbits(64):X}.2022"
+    def test_bump(self) -> None:
+        major = self.random_int(0, 100)
+        minor = self.random_int(0, 100)
+        patch = self.random_int(0, 100)
+        prerelease = f"{self.random_sha()}.alpha"
+        build = f"{self.random_sha()}.2022"
 
         s = f"{major}.{minor}.{patch}-{prerelease}+{build}"
 
         v = semver.SemVer(s)
         v.bump_major()
-        self.assertEqual(major + 1, v.major)
-        self.assertEqual(0, v.minor)
-        self.assertEqual(0, v.patch)
-        self.assertListEqual([], v.prerelease_list)
-        self.assertListEqual([], v.build_list)
+        self.assertEqual(v.major, major + 1)
+        self.assertEqual(v.minor, 0)
+        self.assertEqual(v.patch, 0)
+        self.assertEqual(v.prerelease_list, [])
+        self.assertEqual(v.build_list, [])
 
         v.append_prerelease(prerelease)
         v.append_build(build)
 
         v.bump_patch()
-        self.assertEqual(major + 1, v.major)
-        self.assertEqual(0, v.minor)
-        self.assertEqual(1, v.patch)
-        self.assertListEqual([], v.prerelease_list)
-        self.assertListEqual([], v.build_list)
+        self.assertEqual(v.major, major + 1)
+        self.assertEqual(v.minor, 0)
+        self.assertEqual(v.patch, 1)
+        self.assertEqual(v.prerelease_list, [])
+        self.assertEqual(v.build_list, [])
 
         v.append_prerelease(prerelease)
         v.append_build(build)
 
         v.bump_minor()
-        self.assertEqual(major + 1, v.major)
-        self.assertEqual(1, v.minor)
-        self.assertEqual(0, v.patch)
-        self.assertListEqual([], v.prerelease_list)
-        self.assertListEqual([], v.build_list)
+        self.assertEqual(v.major, major + 1)
+        self.assertEqual(v.minor, 1)
+        self.assertEqual(v.patch, 0)
+        self.assertEqual(v.prerelease_list, [])
+        self.assertEqual(v.build_list, [])

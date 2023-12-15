@@ -1,27 +1,28 @@
-"""Test main
-"""
+from __future__ import annotations
 
 import sys
 import unittest
 
 import autodict
 
-import witch_ver
 from tests import TEST_LOG
+from witch_ver.version import __version__, version_dict
 
 
-def pre_tests():
-    if TEST_LOG.exists():
-        TEST_LOG.unlink()
-    with autodict.JSONAutoDict(TEST_LOG) as d:
-        d["version"] = witch_ver.version_dict
+def pre_tests() -> None:
+    """Things to run before all tests."""
+    print(f"Testing version {__version__}")
+    TEST_LOG.unlink(missing_ok=True)
+    with autodict.JSONAutoDict(str(TEST_LOG)) as d:
+        d["version"] = version_dict
         d["classes"] = {}
         d["methods"] = {}
 
 
-def post_tests():
+def post_tests() -> None:
+    """Things to run after all tests."""
     n_slowest = 10
-    with autodict.JSONAutoDict(TEST_LOG) as d:
+    with autodict.JSONAutoDict(str(TEST_LOG)) as d:
         classes = sorted(d["classes"].items(), key=lambda item: -item[1])[:n_slowest]
         methods = sorted(d["methods"].items(), key=lambda item: -item[1])[:n_slowest]
 
@@ -40,5 +41,9 @@ def post_tests():
 
 pre_tests()
 m = unittest.main(module=None, exit=False)
-post_tests()
-sys.exit(not m.result.wasSuccessful())
+all_passed = m.result.wasSuccessful()
+if all_passed:
+    post_tests()
+    sys.exit(0)
+else:
+    sys.exit(1)
