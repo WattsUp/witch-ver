@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import pathlib
 from unittest import mock
 
 from tests import base
@@ -37,6 +38,10 @@ class TestVersion(base.TestBase):
 
         try:
             io.open = mock_open
+
+            # For 3.10 pathlib used an accessor model, mock that too
+            if self.is_py_3_10:
+                pathlib._normal_accessor.open = mock_open  # type: ignore[attr-defined] # noqa: SLF001
 
             # File does not exist yet
             calls.clear()
@@ -75,6 +80,8 @@ class TestVersion(base.TestBase):
             check_file(crlf=True)
         finally:
             io.open = original_open
+            if self.is_py_3_10:
+                pathlib._normal_accessor.open = original_open  # type: ignore[attr-defined] # noqa: SLF001
 
     def test_get_version(self) -> None:
         path_version = self._TEST_ROOT.joinpath("version.py")

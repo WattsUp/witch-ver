@@ -4,6 +4,7 @@ import importlib.util
 import random
 import shutil
 import string
+import sys
 import time
 import unittest
 from pathlib import Path
@@ -20,6 +21,11 @@ if TYPE_CHECKING:
 class TestBase(unittest.TestCase):
     _TEST_ROOT = Path.cwd().joinpath(".test").resolve()
     _DATA_ROOT = Path(__file__).resolve().parent.joinpath("data")
+
+    # For pathlib mocking
+    is_py_3_10 = (
+        sys.version_info[0] == 3 and sys.version_info[1] == 10  # noqa: PLR2004, YTT201
+    )
 
     @classmethod
     def random_string(cls, length: int = 20) -> str:

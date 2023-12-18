@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import pathlib
 import re
 import textwrap
 from pathlib import Path
@@ -75,6 +76,10 @@ class TestVersionHook(base.TestBase):
         try:
             io.open = mock_open
 
+            # For 3.10 pathlib used an accessor model, mock that too
+            if self.is_py_3_10:
+                pathlib._normal_accessor.open = mock_open  # type: ignore[attr-defined] # noqa: SLF001
+
             # Upon import, it will write to path_test
             calls.clear()
             version_hook = self.import_file(path_test)
@@ -131,3 +136,5 @@ class TestVersionHook(base.TestBase):
                 witch_ver.fetch = original_fetch
         finally:
             io.open = original_open
+            if self.is_py_3_10:
+                pathlib._normal_accessor.open = original_open  # type: ignore[attr-defined] # noqa: SLF001
