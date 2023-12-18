@@ -1,6 +1,4 @@
-"""Semantic Versioning as described by https://semver.org/
-"""
-
+"""Semantic Versioning as described by https://semver.org/."""
 from __future__ import annotations
 
 import re
@@ -15,7 +13,7 @@ REGEX = re.compile(
     rf"(?P<minor>{_NUM_ID})\."
     rf"(?P<patch>{_NUM_ID})"
     rf"(?:-(?P<prerelease>{_PRE_ID}(?:\.{_PRE_ID})*))?"
-    rf"(?:\+(?P<build>{_BUILD_ID}(?:\.{_BUILD_ID})*))?$"
+    rf"(?:\+(?P<build>{_BUILD_ID}(?:\.{_BUILD_ID})*))?$",
 )
 REGEX_NUM_ID = re.compile(rf"^{_NUM_ID}$")
 REGEX_PRE_ID = re.compile(rf"^{_PRE_ID}$")
@@ -23,52 +21,54 @@ REGEX_BUILD_ID = re.compile(rf"^{_BUILD_ID}$")
 
 
 class SemVer:
-    """Semantic Versioning as described by https://semver.org/"""
+    """Semantic Versioning as described by https://semver.org/."""
 
     def __init__(
         self,
-        string: str = None,
-        major: int = None,
-        minor: int = None,
-        patch: int = None,
-        prerelease: t.Union[str, t.List[str]] = None,
-        build: t.Union[str, t.List[str]] = None,
+        string: t.Union[str, None] = None,
+        major: t.Union[int, None] = None,
+        minor: t.Union[int, None] = None,
+        patch: t.Union[int, None] = None,
+        prerelease: t.Union[str, t.List[str], None] = None,
+        build: t.Union[str, t.List[str], None] = None,
     ) -> None:
-        """Create a SemVer object
+        """Create a SemVer object.
 
         Must provide a string to parse or at least major, minor, & patch.
 
         Args:
-          string: String to parse
-          major: Major revision number (required if s is None)
-          minor: Minor revision number (required if s is None)
-          patch: Patch revision number (required if s is None)
-          prerelease: Prerelease tag or a list of them (optional)
-          build: Build metadata tag or a list of them (optional)
+            string: String to parse
+            major: Major revision number (required if s is None)
+            minor: Minor revision number (required if s is None)
+            patch: Patch revision number (required if s is None)
+            prerelease: Prerelease tag or a list of them (optional)
+            build: Build metadata tag or a list of them (optional)
 
         Raises:
-          TypeError if s is None and major, minor, or patch is missing
-          ValueError if any any values are improper format
+            TypeError if s is None and major, minor, or patch is missing
+            ValueError if any any values are improper format
         """
-        self._major = None
-        self._minor = None
-        self._patch = None
+        self._major = 0
+        self._minor = 0
+        self._patch = 0
         self._prerelease: t.List[str] = []
         self._build: t.List[str] = []
 
         if string is not None:
             m = REGEX.match(string)
             if m is None:
-                raise ValueError(f"String did not match SemVer pattern '{string}'")
+                msg = f"String did not match SemVer pattern '{string}'"
+                raise ValueError(msg)
             m = m.groupdict()
-            major = m["major"]
-            minor = m["minor"]
-            patch = m["patch"]
+            major = int(m["major"])
+            minor = int(m["minor"])
+            patch = int(m["patch"])
             prerelease = m["prerelease"]
             build = m["build"]
 
         if major is None or minor is None or patch is None:
-            raise TypeError("SemVer() takes a string or major, minor, & patch")
+            msg = "SemVer() takes a string or major, minor, & patch"
+            raise TypeError(msg)
 
         self._major = int(major)
         self._minor = int(minor)
@@ -90,6 +90,7 @@ class SemVer:
                     self.append_build(e)
 
     def __str__(self) -> str:
+        """Formatted semantic version string."""
         buf = self.core
         if len(self._prerelease) > 0:
             buf += "-"
@@ -100,23 +101,25 @@ class SemVer:
         return buf
 
     def __repr__(self) -> str:
+        """Representation debug string."""
         return f"<witch_ver.semver.SemVer '{self}'>"
 
     def __eq__(self, obj: object) -> bool:
-        """Compare SemVer for equality
+        """Compare SemVer for equality.
 
         Tests strictly that all parts match.
 
         Args:
-          obj: Of type SemVer or a string
+            obj: Of type SemVer or a string
 
         Returns:
-          True if all parts are equal, False otherwise
+            True if all parts are equal, False otherwise
         """
         if isinstance(obj, str):
             obj = SemVer(obj)
         elif not isinstance(obj, SemVer):
-            raise TypeError(f"Cannot compare SemVer to {type(obj)}")
+            msg = f"Cannot compare SemVer to {type(obj)}"
+            raise TypeError(msg)
 
         if self._major != obj._major:
             return False
@@ -131,20 +134,21 @@ class SemVer:
         return True
 
     def __gt__(self, obj: object) -> bool:
-        """Compare SemVer for greater-than
+        """Compare SemVer for greater-than.
 
         See https://semver.org/#spec-item-11 for precedence
 
         Args:
-          obj: Of type SemVer or a string
+            obj: Of type SemVer or a string
 
         Returns:
-          True if all parts are equal, False otherwise
+            True if all parts are equal, False otherwise
         """
         if isinstance(obj, str):
             obj = SemVer(obj)
         elif not isinstance(obj, SemVer):
-            raise TypeError(f"Cannot compare SemVer to {type(obj)}")
+            msg = f"Cannot compare SemVer to {type(obj)}"
+            raise TypeError(msg)
 
         if self._major > obj._major:
             return True
@@ -154,10 +158,10 @@ class SemVer:
             return True
         for this, other in zip(self._prerelease, obj._prerelease):
             if REGEX_NUM_ID.match(this):
-                this = int(this)
+                this_i = int(this)
                 if REGEX_NUM_ID.match(other):
-                    other = int(other)
-                    if this > other:
+                    other_i = int(other)
+                    if this_i > other_i:
                         return True
                 # this is number
                 # other is alphanumeric
@@ -172,16 +176,19 @@ class SemVer:
         return len(self._prerelease) < len(obj._prerelease)
 
     def __ge__(self, obj: object) -> bool:
+        """Compare version for greater-equal."""
         return (self > obj) or (self == obj)
 
     def __lt__(self, obj: object) -> bool:
+        """Compare version for less-than."""
         return not self >= obj
 
     def __le__(self, obj: object) -> bool:
+        """Compare version for less-equal."""
         return not self > obj
 
     def bump_major(self) -> None:
-        """Bump major revision number
+        """Bump major revision number.
 
         Adds one to major.
         Resets minor, patch, prerelease, and build
@@ -193,7 +200,7 @@ class SemVer:
         self.clear_build()
 
     def bump_minor(self) -> None:
-        """Bump minor revision number
+        """Bump minor revision number.
 
         Adds one to minor.
         Resets patch, prerelease, and build
@@ -204,7 +211,7 @@ class SemVer:
         self.clear_build()
 
     def bump_patch(self) -> None:
-        """Bump patch revision number
+        """Bump patch revision number.
 
         Adds one to patch.
         Resets prerelease, and build
@@ -214,71 +221,73 @@ class SemVer:
         self.clear_build()
 
     def clear_prerelease(self) -> None:
-        """Clear prerelease tags"""
+        """Clear prerelease tags."""
         self._prerelease = []
 
     def append_prerelease(self, s: str) -> None:
-        """Append prerelease tag
+        """Append prerelease tag.
 
         Args:
           s: String tag to append or multiple tag.tag.tag
         """
         for i in s.split("."):
             if not REGEX_PRE_ID.match(i):
-                raise ValueError(f"Prerelease tag does not match SemVer pattern '{i}'")
+                msg = f"Prerelease tag does not match SemVer pattern '{i}'"
+                raise ValueError(msg)
             self._prerelease.append(i)
 
     def clear_build(self) -> None:
-        """Clear build tags"""
+        """Clear build tags."""
         self._build = []
 
     def append_build(self, s: str) -> None:
-        """Append prerelease tag
+        """Append prerelease tag.
 
         Args:
           s: String tag to append or multiple tag.tag.tag
         """
         for i in s.split("."):
             if not REGEX_BUILD_ID.match(i):
-                raise ValueError(f"Build tag does not match SemVer pattern '{i}'")
+                msg = f"Build tag does not match SemVer pattern '{i}'"
+                raise ValueError(msg)
             self._build.append(i)
 
     @property
     def major(self) -> int:
-        """Major revision number"""
+        """Major revision number."""
         return self._major
 
     @property
     def minor(self) -> int:
-        """Minor revision number"""
+        """Minor revision number."""
         return self._minor
 
     @property
     def patch(self) -> int:
-        """Patch revision number"""
+        """Patch revision number."""
         return self._patch
 
     @property
     def prerelease_list(self) -> t.List[str]:
-        """Prerelease tags as a list"""
+        """Prerelease tags as a list."""
         return self._prerelease
 
     @property
     def prerelease(self) -> str:
-        """Prerelease tags as a single string"""
+        """Prerelease tags as a single string."""
         return ".".join(self._prerelease)
 
     @property
     def build_list(self) -> t.List[str]:
-        """Build tags as a list"""
+        """Build tags as a list."""
         return self._build
 
     @property
     def build(self) -> str:
-        """Build tags as a single string"""
+        """Build tags as a single string."""
         return ".".join(self._build)
 
     @property
     def core(self) -> str:
-        """Version core string"""
+        """Version core string."""
         return f"{self._major}.{self._minor}.{self._patch}"

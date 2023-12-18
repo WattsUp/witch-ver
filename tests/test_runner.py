@@ -1,35 +1,35 @@
-"""Test module runner
-"""
+from __future__ import annotations
 
-import io
-import os
 import subprocess
 import typing as t
-from unittest import mock
+from typing import TYPE_CHECKING
 
 from tests import base
 from witch_ver import runner
 
+if TYPE_CHECKING:
+    import os
+
 
 class TestRunner(base.TestBase):
-    """Test runner module"""
-
-    def test_run(self):
+    def test_run(self) -> None:
         bad_cmd = "_"
 
         class MockData:
-            """Data class to store output from mocked commands"""
-
-            cmd_called: t.List[str] = None
-            cwd_called: t.Union[str, bytes, os.PathLike] = None
-            stdout_out: str = None
-            returncode_out: int = None
+            cmd_called: t.Union[t.List[str], None] = None
+            cwd_called: t.Union[str, bytes, os.PathLike, None] = None
+            stdout_out: str = ""
+            returncode_out: int = 0
 
         m = MockData()
 
-        def mock_run(cmd: t.List[str], **kwargs) -> subprocess.CompletedProcess:
+        def mock_run(
+            cmd: t.List[str],
+            cwd: t.Union[str, bytes, os.PathLike, None] = None,
+            **_,
+        ) -> subprocess.CompletedProcess:
             m.cmd_called = cmd
-            m.cwd_called = kwargs.get("cwd", None)
+            m.cwd_called = cwd
 
             self.assertIsInstance(cmd, list)
             if cmd[0] == bad_cmd:
@@ -38,7 +38,10 @@ class TestRunner(base.TestBase):
                 self.assertIsInstance(c, str)
 
             return subprocess.CompletedProcess(
-                cmd, m.returncode_out, m.stdout_out.encode(), b""
+                cmd,
+                m.returncode_out,
+                m.stdout_out.encode(),
+                b"",
             )
 
         original_run = runner.subprocess.run
@@ -51,25 +54,22 @@ class TestRunner(base.TestBase):
             m.returncode_out = 0
 
             stdout, returncode = runner.run(cmd, args)
-            self.assertEqual(m.stdout_out, stdout)
-            self.assertEqual(m.returncode_out, returncode)
-            self.assertEqual(None, m.cwd_called)
-            self.assertListEqual([cmd] + args, m.cmd_called)
+            self.assertEqual(stdout, m.stdout_out)
+            self.assertEqual(returncode, m.returncode_out)
+            self.assertIsNone(m.cwd_called)
+            self.assertEqual(m.cmd_called, [cmd, *args])
 
             cmd = bad_cmd
             args = ["hello"]
             m.stdout_out = "hi"
             m.returncode_out = 0
 
-            with mock.patch("sys.stdout", new=io.StringIO()) as fake_stdout:
-                stdout, returncode = runner.run(cmd, args, cwd=self._TEST_ROOT)
-            self.assertEqual(None, stdout)
-            self.assertEqual(None, returncode)
-            self.assertEqual(self._TEST_ROOT, m.cwd_called)
-            self.assertListEqual([cmd] + args, m.cmd_called)
-            self.assertEqual(
-                f"Failed to run '{bad_cmd} {' '.join(args)}'\n", fake_stdout.getvalue()
-            )
+            stdout, returncode = runner.run(cmd, args, cwd=self._TEST_ROOT)
+
+            self.assertEqual(stdout, f"Failed to run '{bad_cmd} {' '.join(args)}'")
+            self.assertNotEqual(returncode, 0)
+            self.assertEqual(m.cwd_called, self._TEST_ROOT)
+            self.assertEqual(m.cmd_called, [cmd, *args])
 
         finally:
             runner.subprocess.run = original_run

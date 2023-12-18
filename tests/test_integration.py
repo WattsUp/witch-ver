@@ -1,7 +1,5 @@
-"""Test module integration
-"""
+from __future__ import annotations
 
-import importlib.util
 import io
 import os
 import pathlib
@@ -10,18 +8,16 @@ import shutil
 import sys
 import textwrap
 import zipfile
-from types import ModuleType
+from pathlib import Path
 from unittest import mock
 
 from tests import base
-from witch_ver import integration
+from witch_ver import git, integration
 
 
 class TestIntegration(base.TestBase):
-    """Test integration"""
-
     @classmethod
-    def setUpClass(cls):
+    def setUpClass(cls) -> None:
         super().setUpClass()
 
         # Can't commit a git repo to this repo
@@ -33,92 +29,84 @@ class TestIntegration(base.TestBase):
                 with zipfile.ZipFile(z, "r") as z_file:
                     z_file.extractall(path)
 
-    def _import(self, path: pathlib.Path) -> ModuleType:
-        name = path.name.strip(".py")
-        spec = importlib.util.spec_from_file_location(name, path)
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        return module
-
-    def test_write_matching_newline(self):
+    def test_write_matching_newline(self) -> None:
         path = self._TEST_ROOT.joinpath("version.txt")
         contents = "\n".join(self.random_string() for _ in range(10))
 
-        def check_file(crlf: bool) -> None:
-            """Check if contents match and line ending is proper
+        def check_file(*_, crlf: bool) -> None:
+            """Check if contents match and line ending is proper.
 
             Args:
               crlf: True will expect CRLF line endings, False for LF
             """
-            with open(path, "r", encoding="utf-8") as file:
+            with path.open(encoding="utf-8") as file:
                 buf = file.read()
-                self.assertEqual(contents, buf)
+                self.assertEqual(buf, contents)
 
-            with open(path, "rb") as file:
+            with path.open("rb") as file:
                 is_crlf = b"\r\n" in file.read()
-                self.assertEqual(crlf, is_crlf)
+                self.assertEqual(is_crlf, crlf)
 
-        original_open = open
+        original_open = io.open
 
         calls = []
 
-        def mock_open(fname: str, *args, **kwargs) -> object:
+        def mock_open(fname: str, *args, **kwargs) -> object:  # noqa: ANN002, ANN003
             calls.append({"file": fname, "args": args, "kwargs": kwargs})
             return original_open(fname, *args, **kwargs)
 
-        # File does not exist yet
-        calls.clear()
-        with mock.patch("builtins.open", mock_open):
-            integration._write_matching_newline(  # pylint: disable=protected-access
-                path, contents
-            )
-        check_file(False)
-        self.assertEqual(1, len(calls))
-        self.assertEqual("wb", calls[0]["args"][0])
+        try:
+            io.open = mock_open
 
-        # File does exist, no modifications to take place
-        calls.clear()
-        with mock.patch("builtins.open", mock_open):
-            integration._write_matching_newline(  # pylint: disable=protected-access
-                path, contents
-            )
-        check_file(False)
-        self.assertEqual(1, len(calls))
-        self.assertEqual("rb", calls[0]["args"][0])
+            # For 3.10 pathlib used an accessor model, mock that too
+            if self.is_py_3_10:
+                pathlib._normal_accessor.open = mock_open  # type: ignore[attr-defined] # noqa: SLF001
 
-        with open(path, "wb") as file:
-            contents_b = contents.encode().replace(b"\n", b"\r\n")
-            file.write(contents_b)
+            # File does not exist yet
+            calls.clear()
+            integration._write_matching_newline(path, contents)  # noqa: SLF001
+            self.assertEqual(len(calls), 1)
+            self.assertEqual(calls[0]["args"][0], "wb")
+            check_file(crlf=False)
 
-        # File does exist as CRLF, no modifications to take place
-        calls.clear()
-        with mock.patch("builtins.open", mock_open):
-            integration._write_matching_newline(  # pylint: disable=protected-access
-                path, contents
-            )
-        check_file(True)
-        self.assertEqual(1, len(calls))
-        self.assertEqual("rb", calls[0]["args"][0])
+            # File does exist, no modifications to take place
+            calls.clear()
+            integration._write_matching_newline(path, contents)  # noqa: SLF001
+            self.assertEqual(len(calls), 1)
+            self.assertEqual(calls[0]["args"][0], "rb")
+            check_file(crlf=False)
 
-        # Modify contents
-        contents += self.random_string()
+            with path.open("wb") as file:
+                contents_b = contents.encode().replace(b"\n", b"\r\n")
+                file.write(contents_b)
 
-        # File does exist as CRLF
-        calls.clear()
-        with mock.patch("builtins.open", mock_open):
-            integration._write_matching_newline(  # pylint: disable=protected-access
-                path, contents
-            )
-        check_file(True)
-        self.assertEqual(2, len(calls))
-        self.assertEqual("rb", calls[0]["args"][0])
-        self.assertEqual("wb", calls[1]["args"][0])
+            # File does exist as CRLF, no modifications to take place
+            calls.clear()
+            integration._write_matching_newline(path, contents)  # noqa: SLF001
+            self.assertEqual(len(calls), 1)
+            self.assertEqual(calls[0]["args"][0], "rb")
+            check_file(crlf=True)
 
-    def test_use_witch_ver(self):
-        # use_witch_ver = False
-        integration.use_witch_ver(None, None, False)
+            # Modify contents
+            contents += self.random_string()
 
-        # use_witch_ver = config
+            # File does exist as CRLF
+            calls.clear()
+            integration._write_matching_newline(path, contents)  # noqa: SLF001
+            self.assertEqual(len(calls), 2)
+            self.assertEqual(calls[0]["args"][0], "rb")
+            self.assertEqual(calls[1]["args"][0], "wb")
+            check_file(crlf=True)
+        finally:
+            io.open = original_open
+            if self.is_py_3_10:
+                pathlib._normal_accessor.open = original_open  # type: ignore[attr-defined] # noqa: SLF001
+
+    def test_use_witch_ver(self) -> None:
+        # use_witch_ver is False
+        integration.use_witch_ver(None, None, value=False)  # type: ignore[attr-defined]
+
+        # use_witch_ver is a config
         # custom_str_func is not callable
         value = {"custom_str_func": None}
         self.assertRaises(TypeError, integration.use_witch_ver, None, None, value)
@@ -135,21 +123,25 @@ class TestIntegration(base.TestBase):
 
         # use_witch_ver = function -> not a config
         self.assertRaises(
-            ValueError, integration.use_witch_ver, None, None, lambda: "version"
+            ValueError,
+            integration.use_witch_ver,
+            None,
+            None,
+            lambda: "version",
         )
 
         # use_witch_ver = not a boolean or dictionary
-        self.assertRaises(ValueError, integration.use_witch_ver, None, None, "version")
+        self.assertRaises(TypeError, integration.use_witch_ver, None, None, "version")
 
-    def test_use_witch_ver_package1(self):
+    def test_use_witch_ver_package1(self) -> None:
         path_package = self._DATA_ROOT.joinpath("package-1")
         path_test = self._TEST_ROOT.joinpath("package")
         shutil.copytree(path_package, path_test)
 
-        setup = self._import(path_test.joinpath("setup.py"))
+        setup = self.import_file(path_test.joinpath("setup.py"))
 
         # Change folder to package
-        original_cwd = os.getcwd()
+        original_cwd = Path.cwd()
         original_argv = sys.argv
         try:
             os.chdir(path_test)
@@ -158,10 +150,10 @@ class TestIntegration(base.TestBase):
             path_version = path_test.joinpath("hello", "version.py")
 
             # Prepare the expected output for version.py
-            path_version_hook = pathlib.Path(integration.__file__).with_name(
-                "version_hook.py"
+            path_version_hook = Path(integration.__file__).with_name(
+                "version_hook.py",
             )
-            with open(path_version_hook, "r", encoding="utf-8") as file:
+            with path_version_hook.open(encoding="utf-8") as file:
                 target_ver = file.read()
             target_version_dict = textwrap.dedent(
                 """\
@@ -176,7 +168,7 @@ class TestIntegration(base.TestBase):
                     "distance": 1,
                     "pretty_str": "0.0.0+1.gd78b554",
                     "git_dir": None,
-                }"""
+                }""",
             )
             target_ver = re.sub(
                 r"version_dict = {.*?}",
@@ -196,34 +188,35 @@ class TestIntegration(base.TestBase):
                 from hello.version import __version__
 
                 from hello.world import MSG
-                '''
+                ''',
             )
 
             with mock.patch("sys.stdout", new=io.StringIO()) as fake_stdout:
                 setup.setup()
 
             # Validate setup.py got proper version
-            self.assertEqual("0.0.0+1.gd78b554", fake_stdout.getvalue().strip())
+            self.assertEqual(fake_stdout.getvalue().strip(), "0.0.0+1.gd78b554")
 
-            with open(path_version, "r", encoding="utf-8") as file:
-                self.assertEqual(target_ver, file.read())
+            self.maxDiff = None
+            with path_version.open(encoding="utf-8") as file:
+                self.assertEqual(file.read(), target_ver)
 
-            with open(path_init, "r", encoding="utf-8") as file:
-                self.assertEqual(target_init, file.read())
+            with path_init.open(encoding="utf-8") as file:
+                self.assertEqual(file.read(), target_init)
 
         finally:
             os.chdir(original_cwd)
             sys.argv = original_argv
 
-    def test_use_witch_ver_package2(self):
+    def test_use_witch_ver_package2(self) -> None:
         path_package = self._DATA_ROOT.joinpath("package-2")
         path_test = self._TEST_ROOT.joinpath("package")
         shutil.copytree(path_package, path_test)
 
-        setup = self._import(path_test.joinpath("setup.py"))
+        setup = self.import_file(path_test.joinpath("setup.py"))
 
         # Change folder to package
-        original_cwd = os.getcwd()
+        original_cwd = Path.cwd()
         original_argv = sys.argv
         try:
             os.chdir(path_test)
@@ -232,25 +225,25 @@ class TestIntegration(base.TestBase):
             path_version = path_test.joinpath("hello", "version.py")
 
             # Prepare the expected output for version.py
-            path_version_hook = pathlib.Path(integration.__file__).with_name(
-                "version_hook.py"
+            path_version_hook = Path(integration.__file__).with_name(
+                "version_hook.py",
             )
-            with open(path_version_hook, "r", encoding="utf-8") as file:
+            with path_version_hook.open(encoding="utf-8") as file:
                 target_ver = file.read()
             target_version_dict = textwrap.dedent(
                 """\
-      version_dict = {
-          "tag": "v0.0.0",
-          "tag_prefix": "v",
-          "sha": "93d84de0a95250fbacac83671f6f1ad7fb236742",
-          "sha_abbrev": "93d84de",
-          "branch": "master",
-          "date": "2022-07-29T13:46:13-07:00",
-          "dirty": False,
-          "distance": 2,
-          "pretty_str": "0.0.0+2.g93d84de",
-          "git_dir": None,
-      }"""
+                version_dict = {
+                    "tag": "v0.0.0",
+                    "tag_prefix": "v",
+                    "sha": "93d84de0a95250fbacac83671f6f1ad7fb236742",
+                    "sha_abbrev": "93d84de",
+                    "branch": "master",
+                    "date": "2022-07-29T13:46:13-07:00",
+                    "dirty": False,
+                    "distance": 2,
+                    "pretty_str": "0.0.0+2.g93d84de",
+                    "git_dir": None,
+                }""",
             )
             target_ver = re.sub(
                 r"version_dict = {.*?}",
@@ -264,57 +257,65 @@ class TestIntegration(base.TestBase):
             path_init = path_test.joinpath("hello", "__init__.py")
             target_init = textwrap.dedent(
                 """\
-      # Hello-world module is missing PEP0257 docstring
+                # Hello-world module is missing PEP0257 docstring
 
-      from hello.world import MSG
+                from hello.world import MSG
 
-      from hello.version import __version__
-      """
+                from hello.version import __version__
+                """,
             )
 
             with mock.patch("sys.stdout", new=io.StringIO()) as fake_stdout:
                 setup.setup()
 
             # Validate setup.py got proper version
-            self.assertEqual("0.0.0+2.g93d84de", fake_stdout.getvalue().strip())
+            self.assertEqual(fake_stdout.getvalue().strip(), "0.0.0+2.g93d84de")
 
-            with open(path_version, "r", encoding="utf-8") as file:
-                self.assertEqual(target_ver, file.read())
+            self.maxDiff = None
+            with path_version.open(encoding="utf-8") as file:
+                self.assertEqual(file.read(), target_ver)
 
-            with open(path_init, "r", encoding="utf-8") as file:
-                self.assertEqual(target_init, file.read())
+            with path_init.open(encoding="utf-8") as file:
+                self.assertEqual(file.read(), target_init)
 
             # Mock outside of a git repository
 
-            def mock_fetch(*args, **kwargs):
+            def mock_fetch(
+                *args,  # noqa: ARG001, ANN002
+                **kwargs,  # noqa: ARG001, ANN003
+            ) -> None:
                 raise RuntimeError
 
-            # Succeeds since version.py exists
-            with mock.patch("sys.stdout", new=io.StringIO()) as fake_stdout:
-                with mock.patch("witch_ver.git.fetch", mock_fetch):
-                    setup.setup()
-            self.assertEqual("0.0.0+2.g93d84de", fake_stdout.getvalue().strip())
+            original_fetch = git.fetch
+            try:
+                git.fetch = mock_fetch
 
-            # Fails since version.py does not exist
-            path_version.unlink()
-            with mock.patch("sys.stdout", new=io.StringIO()) as fake_stdout:
-                with mock.patch("witch_ver.git.fetch", mock_fetch):
+                # Succeeds since version.py exists
+                with mock.patch("sys.stdout", new=io.StringIO()) as fake_stdout:
+                    setup.setup()
+                self.assertEqual(fake_stdout.getvalue().strip(), "0.0.0+2.g93d84de")
+
+                # Fails since version.py does not exist
+                path_version.unlink()
+                with mock.patch("sys.stdout", new=io.StringIO()) as fake_stdout:
                     self.assertRaises(RuntimeError, setup.setup)
-            self.assertEqual("", fake_stdout.getvalue().strip())
+                self.assertEqual(fake_stdout.getvalue().strip(), "")
+            finally:
+                git.fetch = original_fetch
 
         finally:
             os.chdir(original_cwd)
             sys.argv = original_argv
 
-    def test_use_witch_ver_package3(self):
+    def test_use_witch_ver_package3(self) -> None:
         path_package = self._DATA_ROOT.joinpath("package-3")
         path_test = self._TEST_ROOT.joinpath("package")
         shutil.copytree(path_package, path_test)
 
-        setup = self._import(path_test.joinpath("setup.py"))
+        setup = self.import_file(path_test.joinpath("setup.py"))
 
         # Change folder to package
-        original_cwd = os.getcwd()
+        original_cwd = Path.cwd()
         original_argv = sys.argv
         try:
             os.chdir(path_test)
@@ -324,13 +325,13 @@ class TestIntegration(base.TestBase):
 
             # Prepare the expected output for version.py
             # Already exists so load that file
-            with open(path_version, "r", encoding="utf-8") as file:
+            with path_version.open(encoding="utf-8") as file:
                 target_ver = file.read()
 
             # Prepare the expected output for __init__.py
             # Already installed so no changes
             path_init = path_test.joinpath("hello", "__init__.py")
-            with open(path_init, "r", encoding="utf-8") as file:
+            with path_init.open(encoding="utf-8") as file:
                 target_init = file.read()
 
             with mock.patch("sys.stdout", new=io.StringIO()) as fake_stdout:
@@ -338,14 +339,15 @@ class TestIntegration(base.TestBase):
 
             # Validate setup.py got proper version
             self.assertEqual(
-                "0.0.0+4.29c921b55529e5a6ba963bcbcaf2f7e1d9f9efe6",
                 fake_stdout.getvalue().strip(),
+                "0.0.0+4.29c921b55529e5a6ba963bcbcaf2f7e1d9f9efe6",
             )
 
-            with open(path_version, "r", encoding="utf-8") as file:
+            self.maxDiff = None
+            with path_version.open(encoding="utf-8") as file:
                 self.assertEqual(target_ver, file.read())
 
-            with open(path_init, "r", encoding="utf-8") as file:
+            with path_init.open(encoding="utf-8") as file:
                 self.assertEqual(target_init, file.read())
 
         finally:
