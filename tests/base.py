@@ -51,7 +51,7 @@ class TestBase(unittest.TestCase):
 
     @classmethod
     def import_file(cls, path: Path) -> ModuleType:
-        name = path.name.strip(".py")
+        name = path.stem
         spec = importlib.util.spec_from_file_location(name, path)
         if spec is None or spec.loader is None:
             msg = f"Failed to create spec for {path}"
